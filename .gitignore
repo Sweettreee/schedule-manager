@@ -1,0 +1,63 @@
+# --- secrets: never commit ---
+.secrets/
+*.secrets/
+api/.secrets/
+*credentials*.json
+*client_secret*.json
+gmail_token.json
+token.json
+*.age
+*.agekey
+.sops.yaml.local
+.env
+.env.*
+!.env.example
+
+# --- kubernetes / infra local state ---
+kubeconfig
+*.kubeconfig
+infra/**/secret-*.yaml
+!infra/**/secret-*.sops.yaml
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+dist/
+build/
+*.egg-info/
+
+# --- node / next ---
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# --- data / dumps: may contain personal mail ---
+*.dump
+*.sql.gz
+backups/
+fixtures/raw/
+!fixtures/anonymised/
+
+# --- os / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+!.vscode/extensions.json
