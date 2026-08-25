@@ -1,8 +1,8 @@
 # GAMEDAY-001 — Planned Failure Drills
 
 **Status**: Approved
-**Last updated**: 2026-08-22
-**Related**: WORKFLOW.md (DoD step 3), BLOCKS-001 §5, OPS-001, REQ-001 §7
+**Last updated**: 2026-08-25 (GD-4 gains the Elastic IP reassociation step — ADR-024)
+**Related**: WORKFLOW.md (DoD step 3), BLOCKS-001 §5, OPS-001, REQ-001 §7, ADR-024
 
 ## Why this document exists
 
@@ -70,9 +70,9 @@ last backup is older than 24 hours.
 
 | | |
 |---|---|
-| **Inject** | Terminate the EC2 instance. Rebuild with `terraform apply`, reattach the data volume, reinstall k3s, let Flux reconcile |
-| **Predict** | The data EBS volume survives (ADR-014); everything else is rebuilt from git; total recovery within RTO |
-| **Measures** | Full RTO. Every manual step you had to take that Terraform or Flux did not cover — **that list is the real output of this drill** |
+| **Inject** | Terminate the EC2 instance. Rebuild with `terraform apply`, reattach the data volume, **reassociate the Elastic IP**, reinstall k3s, let Flux reconcile |
+| **Predict** | The data EBS volume survives (ADR-014); the Elastic IP survives termination and reassociates, so DNS and TLS need no change (ADR-024); everything else is rebuilt from git; total recovery within RTO |
+| **Measures** | Full RTO. **Whether the address really came back** — if it did not, every certificate and bookmark is now wrong and the nightly shutdown is unsafe. Every manual step you had to take that Terraform or Flux did not cover — **that list is the real output of this drill** |
 | **The point** | This is the drill that proves whether "reproducible from git" is true or aspirational. Almost nobody passes it the first time, which is why it is worth doing |
 
 > Run this one **before** the credits run out, while a mistake costs nothing.

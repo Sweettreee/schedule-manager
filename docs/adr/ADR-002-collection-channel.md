@@ -1,15 +1,27 @@
 # ADR-002 — Collection Channel: Gmail First
 
-**Status**: Accepted — **extended by ADR-021 (2026-08-22)**
+**Status**: Accepted — **extended by ADR-021 (2026-08-22)**, **amended by ADR-022 (2026-08-24)**
 **Date**: 2026-08-20
-**Related**: REQ-001, ADR-001, ADR-021, SOURCES-001
+**Related**: REQ-001, ADR-001, ADR-021, ADR-022, SOURCES-001
 
-> **Extension note.** The ladder below (Gmail → RSS → scraping as last resort) is intact and
-> the legal reasoning is unchanged. **ADR-021 inserts a rung above all of them: official APIs.**
+> **Extension note (ADR-021).** **ADR-021 inserts a rung above all of them: official APIs.**
 > Investigating for one revealed that Saramin — excluded here as *"scraping likely
 > prohibited"* — operates an official Open API, and that Worknet publishes one through the
 > government open-data portal. Scraping being prohibited and no API existing are different
 > facts; this ADR treated them as one.
+>
+> **Amendment note (ADR-022).** The ordering below — Gmail first, scraping last — **no longer
+> holds**, and the word *"likely"* in the Context section is why. This ADR checked JobKorea and
+> then assumed Saramin and Linkareer matched it. A `robots.txt` review on 2026-08-24 found
+> Wevity and Linkareer permit the target paths, and found the school notice board has neither a
+> feed nor a `robots.txt`. **ADR-022 moves permitted scraping above email subscription, behind a
+> nine-condition gate.**
+>
+> What survives unchanged is the part that was actually load-bearing: the legal test is the
+> **terms of service**, not `robots.txt`, and for **JobKorea this ADR's conclusion is confirmed
+> and kept** — it stays email-only, because 잡코리아 v 사람인 is decided case law about scraping
+> exactly this content. ADR-022 converts a blanket prohibition into a per-source recorded
+> finding; it does not discard the reasoning.
 
 ## Context
 Investigation of the five candidate sources found meaningful legal risk in scraping.

@@ -1,8 +1,30 @@
 # ADR-021 — Source Channel Ladder: Official APIs First, and Where Authenticated Fetching Runs
 
-**Status**: Accepted — **extends ADR-002**
+**Status**: Accepted — **extends ADR-002**; **§1's ladder superseded by ADR-022 and ADR-023 (2026-08-24)**
 **Date**: 2026-08-22
-**Related**: ADR-002 (extended), ADR-004, ADR-009, ADR-017, ADR-018, ADR-020, ARCH-001, SEC-001, SOURCES-001
+**Related**: ADR-002 (extended), ADR-004, ADR-009, ADR-017, ADR-018, ADR-020, ADR-022, **ADR-023**, ARCH-001, SEC-001, SOURCES-001
+
+> **Supersession note (ADR-022, then ADR-023).** **§1's ladder no longer governs in any part.**
+> Two decisions replaced it:
+>
+> - **`ADR-022`** permitted scraping behind a nine-condition gate and narrowed the ✗ row to
+>   *scraping behind a login* and *any redistribution*. The reason: this ADR inherited
+>   `ADR-002`'s "likely prohibited" assumption about Wevity and Linkareer without checking
+>   either, and left the school notice board — a core source with no feed and no `robots.txt` —
+>   on the paste channel.
+> - **`ADR-023`** then replaced the numbers with names and **merged rungs 2 and 3 into `FEED`**
+>   and scraping with email into `SCRAPE/MAIL`. So §1's rung 2 (personal tokenised feed) and
+>   rung 3 (public feed) are **also superseded** — an earlier version of this note wrongly said
+>   rung 2 was untouched.
+>
+> **The operative ladder is `SOURCES-001` §1.**
+>
+> **Untouched and still authoritative**: the **API-first principle** — an official API outranks
+> everything, which survived both revisions as `API`; §2 (investigate before integrate);
+> **§3 in full** (authenticated fetching runs client-side, never on the server); and §4's
+> rung-6 gate, now named the **`AGENT`** gate in `SOURCES-001` §5, **whose five conditions have
+> never changed**. **JobKorea stays excluded from scraping**, now on recorded case law rather
+> than assumption.
 
 ## Context
 
@@ -41,6 +63,12 @@ three independent grounds.
 | **5** | **Paste / screenshot** | No machine channel exists (ADR-018) | KakaoTalk, academic calendar |
 | **6** | **Authenticated fetch, own account only** | Conditions in §3 below, all of them | LMS course materials (conditional) |
 | ✗ | **Scraping a commercial site** | **Permanently prohibited.** ADR-002's reasoning stands | JobKorea, Saramin web, Linkareer |
+
+> **The whole table above is superseded.** It is kept as the record of what was decided on
+> 2026-08-22. The operative ladder — `API` · `FEED` · `SCRAPE/MAIL` · `PASTE` · conditional
+> `AGENT` — is in **`SOURCES-001` §1**; the reasoning is in `ADR-022` (scraping permitted) and
+> `ADR-023` (named and merged rungs). Rung 6 above is today's **`AGENT`** rung, with §4's five
+> gate conditions unchanged.
 
 **A lower rung may only be used after every higher rung has been checked and recorded as
 unavailable in `SOURCES-001`.** "I didn't look" is not "unavailable".

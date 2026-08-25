@@ -2,7 +2,20 @@
 
 **Status**: Approved
 **Created**: 2026-08-22 (REVIEW-001 finding M-9; renumbered from B6/B7 by ADR-017)
-**Related**: OPS-001, SEC-001, ARCH-001, ADR-005, ADR-014
+**Last updated**: 2026-08-25 (ADR-024: Elastic IP and the nightly shutdown; decisions separated
+from worked examples)
+**Related**: OPS-001, SEC-001, ARCH-001, ADR-005, ADR-014, **ADR-024**
+
+> **How to read the values in this spec.** Two kinds of number appear here and they are not
+> equally binding:
+>
+> - **Decisions** — marked **[DECIDED]**. Changing one changes cost, durability or the security
+>   perimeter, and needs a reason written down. These are why this spec exists.
+> - **Worked examples** — marked *[EXAMPLE]*. Sensible defaults chosen so the block reads as a
+>   procedure rather than a puzzle. Adjust them at the console if reality differs; nothing
+>   downstream depends on the exact value.
+>
+> Everything not marked is a step, not a value.
 
 ## Why these two blocks are specified in advance
 
@@ -91,13 +104,13 @@ speed; B15 will make it reproducible. The point is knowing what Terraform is des
 
 | Resource | Value | Why |
 |---|---|---|
-| VPC CIDR | `10.0.0.0/16` | Room to grow; no peering planned so any private range is fine |
-| Public subnet | `10.0.1.0/24` in `ap-northeast-2a` | One AZ. There is one node; multi-AZ would only add cost |
+| VPC CIDR *[EXAMPLE]* | `10.0.0.0/16` | Room to grow; no peering planned so any private range is fine |
+| Public subnet *[EXAMPLE]* / **one AZ [DECIDED]** | `10.0.1.0/24` in `ap-northeast-2a` | The CIDR is arbitrary; **a single AZ is a decision** — there is one node, and the ADR-014 data volume is AZ-bound to it |
 | Internet Gateway | attached to the VPC | |
 | Route table | `0.0.0.0/0` → IGW, associated with the public subnet | |
 | Auto-assign public IPv4 | enabled on the subnet | |
 
-> **No NAT Gateway.** The single node lives in a public subnet with a public IP. A NAT
+> **No NAT Gateway. [DECIDED]** The single node lives in a public subnet with a public IP. A NAT
 > Gateway would cost ~$35/month — more than the entire budget — to solve a problem this
 > architecture does not have (`CLAUDE.md` §5, OPS-001).
 
@@ -120,6 +133,21 @@ open 22 to the world.
   **not** stored. Never in the repository.
 - Record the fingerprint in `STATUS.md` so a future you can tell which key this is.
 
+**3a. Elastic IP** — **[DECIDED]** (ADR-024)
+
+Allocate **one** Elastic IP and associate it with the instance as soon as the instance exists.
+
+The instance is stopped nightly by design (02:00–08:00 KST). **A stopped instance loses an
+auto-assigned public IPv4 address and gets a different one on start**, which would break DNS,
+TLS renewal, and every bookmark. The Elastic IP is what makes a nightly shutdown compatible with
+a reachable, TLS-terminated site.
+
+- **Cost: unchanged.** AWS bills every public IPv4 address at $0.005/hour whether it is
+  auto-assigned or elastic. `ARCH-001` already carries the ~$3.7/month line.
+- **Exactly one, always attached.** `CLAUDE.md` §5 and `OPS-001` §7's orphan check are about
+  *unattached* addresses, which bill for nothing.
+- Tags: `Project=schedule-manager`, `ManagedBy=console-b11`.
+
 **4. EC2 instance**
 
 | Setting | Value |
@@ -127,8 +155,8 @@ open 22 to the world.
 | AMI | Ubuntu Server 24.04 LTS, **arm64** |
 | Instance type | `t4g.small` (2 vCPU, 2 GiB) |
 | Subnet | the public subnet, auto-assign public IP |
-| Root volume | gp3, **12 GiB**, delete-on-termination **true** |
-| Termination protection | **enabled** |
+| Root volume | gp3, **12 GiB** *[EXAMPLE size]*, delete-on-termination **true** **[DECIDED]** — it holds only reproducible things |
+| Termination protection | **enabled** **[DECIDED]** |
 | Detailed monitoring | off (costs money, VictoriaMetrics covers it from B17) |
 | Tags | `Project=schedule-manager`, `ManagedBy=console-b11` |
 
@@ -141,11 +169,14 @@ Terraform has not yet imported.
 |---|---|
 | Type | gp3, **10 GiB** |
 | AZ | same as the instance (`ap-northeast-2a`) |
-| Delete on termination | **false** — this is the entire point |
-| Device | `/dev/sdf` |
+| Delete on termination | **false** **[DECIDED]** — this is the entire point (ADR-014) |
+| Device *[EXAMPLE]* | `/dev/sdf` — verify the in-guest name with `lsblk` |
 | Tags | `Project=schedule-manager`, `Role=postgres-data` |
 
 On the instance:
+
+*[EXAMPLE — the commands below are a worked procedure, not a script to paste blind. Verify every
+device name against `lsblk` on the actual instance.]*
 
 ```bash
 sudo mkfs.ext4 /dev/nvme1n1          # verify the device name with lsblk first
@@ -156,8 +187,9 @@ echo 'UUID=<uuid>  /mnt/data  ext4  defaults,nofail  0  2' | sudo tee -a /etc/fs
 sudo mount -a
 ```
 
-`nofail` is deliberate: without it, a missing volume makes the instance fail to boot into a
-state you can SSH into.
+**`nofail` and mounting by UUID are [DECIDED], not stylistic.** Device names are not stable
+across reboots, and without `nofail` a missing volume makes the instance fail to boot into a
+state you can SSH into — during an incident, on a node you cannot reach.
 
 **6. Harden and verify**
 
@@ -175,16 +207,28 @@ state you can SSH into.
 - The data volume's "delete on termination" is **false** — verify in the console, do not
   assume.
 - Termination protection is enabled on the instance.
-- No NAT Gateway, no load balancer, no Elastic IP exists in the account.
-- `STATUS.md` records: instance id, volume ids, public IP, key fingerprint, AZ.
+- No NAT Gateway and no load balancer exists in the account.
+- **Exactly one Elastic IP exists, and it is associated with the instance** (ADR-024). An
+  unattached one is a defect — it bills for nothing and is on the monthly orphan check.
+- **Stop the instance once and start it again**, and confirm the address is unchanged. This is
+  the property the Elastic IP exists for, and it is invisible until the first nightly shutdown.
+- `STATUS.md` records: instance id, volume ids, **Elastic IP allocation id and address**, key
+  fingerprint, AZ.
 
 ### Cost created by this block
 
-**About $0.029/hour → roughly $21/month**, from this point onward, continuously:
-`t4g.small` on-demand (~$0.021/hr, Seoul) + 22 GiB gp3 + the public IPv4 address (~$0.005/hr).
+**About $0.029/hour while running → roughly $16/month once the nightly shutdown is in place**
+(`t4g.small` ~$0.021/hr Seoul for 18 h/day + 22 GiB gp3 + the Elastic IP at ~$0.005/hr, which
+bills 24×7 regardless). Without the shutdown it is ~$21/month.
 
-Charged against credits until they expire (OPS-001 §1). Write this sentence into the block
-summary in `STATUS.md` — it is the moment the project starts costing money.
+**From this block onward the project costs money continuously.** Charged against credits until
+they expire (OPS-001 §1). Write that sentence into the block summary in `STATUS.md`.
+
+> **The shutdown schedule itself is not built here.** ADR-024 requires it to live **outside** the
+> instance — a cron entry on the node cannot start the node. Decide the mechanism (an EventBridge
+> scheduled rule calling `StopInstances`/`StartInstances`, or equivalent) at B13, when the
+> collector's 08:05 run is also being scheduled. Until then, stop the instance by hand when it is
+> not in use; the cost figures above assume the schedule exists.
 
 ### Not in this block
 

@@ -1,34 +1,33 @@
 # DATA-001 — Data Model and Schema
 
 **Status**: Approved
-**Last updated**: 2026-08-22 (revised after REVIEW-001, then after ADR-017)
-**Related**: ADR-003, ADR-015, ADR-017, ADR-018, ADR-019, ADR-020
+**Last updated**: 2026-08-25 (`SCRAPE` added to the `source` enum; the four file tables marked
+provisional)
+**Related**: ADR-003, ADR-015, ADR-017, ADR-018, ADR-019, ADR-020, ADR-022
 
-## Changes in revision 3 (ADR-017 scope expansion)
+## Revision history
 
-| Change | Source |
-|---|---|
-| `starts_at`, `all_day` added to `items`; `due_at` meaning unchanged | ADR-019 |
-| `reminders` table | ADR-019 |
-| `source` gains `PASTE`, `ICS`, `API`; `type` gains `NOTICE` | ADR-018, ADR-017, ADR-021 |
-| `blobs`, `files`, `file_versions`, `devices` tables | ADR-020 |
-| Trigram indexes for basic search | ADR-017 capability 3 |
+**Revision 4 (2026-08-25).** `source` gains **`'SCRAPE'`** — B3 writes scraped rows and no enum
+value existed for them, which would have forced either a mislabelled `'RSS'` or a migration plus
+a backfill after B2. The four file-synchronisation tables are marked **provisional** (see below).
 
-**All of these are created in block B2's first migration**, before any row exists — even
-though several are not used until B7, B8 and B14. Under forward-only migrations (ADR-015),
-adding a column later is cheap but retrofitting *meaning* into rows that never captured it is
-not. See ADR-020 §"Why device identity and versions exist in v1".
+**Revision 3 (ADR-017 scope expansion).** `starts_at` / `all_day` added and the `reminders` table
+created (ADR-019); `source` gained `PASTE`, `ICS`, `API` and `type` gained `NOTICE`
+(ADR-018, ADR-017, ADR-021); the `blobs` / `files` / `file_versions` / `devices` tables added
+(ADR-020); trigram indexes added for basic search.
 
-## Changes in revision 2 (REVIEW-001)
+**Revision 2 (REVIEW-001).** `content_hash` stopped including `url` — the hash exists to detect
+*the same posting from two different sources*, and those always have different URLs, so including
+it guaranteed the hash could never do its job. `category` became nullable, so `NULL` means "not a
+classification target" and non-newsletter rows no longer corrupt the evidence B21 uses. The
+`collector_state` table was added, because FR-13's incremental collection had nowhere to persist
+its cursor. `usage_events` gained an index; enum columns gained `CHECK` constraints, which
+previously existed only as SQL comments.
 
-| Change | Why |
-|---|---|
-| `content_hash` no longer includes `url` | The hash exists to detect the *same posting from two different sources*, and those always have different URLs. Including `url` guaranteed the hash could never do its job |
-| `category` is now nullable | `NULL` = "not a classification target". Previously every JOB/CONTEST/RSS row defaulted to `UNCLASSIFIED`, which would have corrupted the evidence block B21 uses to decide whether AI classification is needed |
-| New `collector_state` table | FR-13 (incremental collection) needs somewhere to persist the last collection point. There was no such place |
-| `usage_events` index added | M-1…M-3 aggregation would otherwise full-scan |
-| `CHECK` constraints on enum columns | Enum values existed only as SQL comments. One typo and an item silently disappears from every tab |
-| `usage_events.kind` gains `COVERAGE_AUDIT` | PRD-000 §4.1 |
+**All tables are created in block B2's first migration**, before any row exists — even those not
+used until B7, B8 and B14. Under forward-only migrations (ADR-015), adding a column later is
+cheap but retrofitting *meaning* into rows that never captured it is not. See ADR-020
+§"Why device identity and versions exist in v1".
 
 ## Design decisions embedded here
 
@@ -49,7 +48,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- basic search (ADR-017 capability 3)
 
 CREATE TABLE items (
     id           BIGSERIAL PRIMARY KEY,
-    source       TEXT        NOT NULL,   -- GMAIL | RSS | ICS | API | PASTE
+    source       TEXT        NOT NULL,   -- GMAIL | SCRAPE | RSS | ICS | API | PASTE
                                          -- | MANUAL | FILE_SYNC
     source_id    TEXT        NOT NULL,   -- Gmail message id, RSS guid, uuid for pastes
     parent_id    BIGINT      REFERENCES items(id) ON DELETE SET NULL,
@@ -73,7 +72,7 @@ CREATE TABLE items (
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT items_source_unique UNIQUE (source, source_id),
-    CONSTRAINT items_source_check   CHECK (source IN ('GMAIL','RSS','ICS','API','PASTE',
+    CONSTRAINT items_source_check   CHECK (source IN ('GMAIL','SCRAPE','RSS','ICS','API','PASTE',
                                                       'MANUAL','FILE_SYNC')),
     CONSTRAINT items_type_check     CHECK (type IN ('NEWSLETTER','JOB','CONTEST','NOTICE',
                                                     'SCHEDULE','FILE','NOTE')),
@@ -158,6 +157,11 @@ CREATE INDEX reminders_pending_idx ON reminders (fire_at) WHERE sent_at IS NULL;
 
 -- ---------------------------------------------------------------- ADR-020
 -- File synchronisation. Content-addressed: the S3 object key IS the hash.
+--
+-- PROVISIONAL — see "Provisional status of the file tables" below.
+-- The COLUMNS are decided and ship in B2's first migration (ADR-020's lineage
+-- argument). Indexes, defaults and storage class are re-confirmed at B14, when
+-- S3 exists and there is something real to measure.
 
 CREATE TABLE devices (
     id           TEXT        PRIMARY KEY,   -- uuid generated by the agent on first run
@@ -217,6 +221,41 @@ later is cheap, but a version created today without an ancestor pointer can neve
 "did these two edits descend from a common ancestor?" — which is the whole question L3 has to
 answer. Capturing the lineage costs a few bytes per row and is the difference between L3
 being an addition and L3 being a rewrite. See ADR-020.
+
+## Provisional status of the file tables
+
+`blobs`, `files`, `file_versions` and `devices` are **provisional**, and the word means something
+narrow:
+
+| Fixed now | Re-confirmed at B14 |
+|---|---|
+| **The columns**, including `file_versions.parent_id` and `device_id` | Indexes |
+| The content-addressed key (`blobs.content_hash` = the S3 key suffix) | `storage_class` default |
+| Soft delete via `files.deleted_at` | `ref_count` semantics for garbage collection (B19) |
+| Foreign keys and the version chain | CHECK constraints beyond the two present |
+
+**The columns are not negotiable**, and that is the whole point of ADR-020: adding a column later
+is cheap under forward-only migrations, but a version row created today without an ancestor
+pointer can never be asked *"did these two edits descend from a common ancestor?"* — which is the
+only question L3 has to answer. Capturing lineage costs a few bytes per row and is the difference
+between L3 being an addition and L3 being a rewrite.
+
+What is genuinely undecided is everything that depends on seeing real files: how large they are,
+how often they change, how many blobs go unreferenced. Those are B14 and B19 questions, and
+`ADR-020`'s open questions already name them. **Marking these tables provisional is not
+permission to change the columns.**
+
+## `source` semantics — `SCRAPE` vs `RSS`
+
+| Value | Means |
+|---|---|
+| `SCRAPE` | An HTML page parsed by a scraping adapter behind the `SOURCES-001` §4 gate — the school notice board (B3), Wevity (B26) |
+| `RSS` | A real syndication feed. **No source in this project uses this value, and none is known to exist** — the last candidate, the LMS forum RSS, was ruled out on 2026-08-25 (`SOURCES-001` §1.1). **The value is kept deliberately**: migrations are forward-only (ADR-015), an unused enum value costs nothing, and adding one later costs a migration. The school notice board is *not* an RSS source — it publishes no feed (verified 2026-08-24) |
+| `ICS` | An iCalendar feed — the LMS calendar (B24) |
+| `API` | An official API — 고용24/Worknet, Saramin (B23) |
+
+The distinction matters because `UNIQUE (source, source_id)` is scoped by `source`. A scraper and
+a feed covering the same board would otherwise collide on a shared id space.
 
 > `MISSED_ITEM` was removed as a `usage_events.kind`. PRD-000 §4.1 explains why: a missed
 > item is by definition one the user never saw, so self-reporting cannot measure it. The
@@ -285,7 +324,7 @@ WHERE type = 'NEWSLETTER' AND category = 'UNCLASSIFIED';
 | `NEWSLETTER` | 뉴스레터 |
 | `JOB` | 채용 |
 | `CONTEST` | 공모전 |
-| `NOTICE` | 공지 (학교 공지사항, RSS) |
+| `NOTICE` | 공지 (학교 공지사항 — 스크래핑; LMS 강의 공지 — 붙여넣기) |
 | `SCHEDULE` | 일정 (학사일정, 붙여넣기로 등록된 일정) |
 | `FILE` | 파일 (동기화된 자료) |
 | `NOTE` | reserved, not shown in v1 |
@@ -349,8 +388,9 @@ Two distinct kinds of duplicate exist:
 
 1. **Re-collection of the same message** — the same Gmail message fetched twice.
    Prevented by `UNIQUE (source, source_id)`. On conflict: ignore, do not update.
-2. **The same posting arriving from two different sources** — e.g. Wevity and Linkareer both
-   announce one contest. **Not handled in v1.** `content_hash` is computed and stored so
+2. **The same posting arriving from two different channels** — e.g. **Wevity by email *and* by
+   scraper** (deliberate redundancy, ADR-022 §6), or one job appearing in both 고용24 and
+   Saramin. **Not handled in v1.** `content_hash` is computed and stored so
    that, once real data shows how often this happens, cross-source deduplication can be
    added without a backfill. The measurement query:
 
