@@ -1,7 +1,8 @@
 # SEC-001 — Security and Privacy Baseline
 
 **Status**: Approved
-**Last updated**: 2026-08-22 (revised after REVIEW-001, then ADR-017: paste privacy, file storage)
+**Last updated**: 2026-08-25 (paste-privacy controls delegated to ADR-018; SEC-2 gains the
+unresolved-hostname note)
 
 ## What is at stake
 
@@ -14,7 +15,7 @@ Tokens accidentally pushed to GitHub are harvested by automated scanners within 
 | ID | Control | Where |
 |---|---|---|
 | SEC-1 | Dashboard requires HTTP Basic Auth via ingress-nginx, credentials in a k8s Secret | B12 |
-| SEC-2 | TLS terminated at ingress, certificates from Let's Encrypt via cert-manager | B12 |
+| SEC-2 | TLS terminated at ingress, certificates from Let's Encrypt via cert-manager. **Blocked on an unresolved dependency: no hostname is decided anywhere in this document set**, and an ACME challenge needs one. It also needs a *stable* address, which is why ADR-024 requires the Elastic IP. See `STATUS` §4 | B12 |
 | SEC-3 | Gmail scope is `gmail.readonly` only — never a write or send scope | B1 |
 | SEC-4 | A dedicated Gmail account is used for collection, isolated from the primary account | B0 |
 | SEC-5 | Secrets are never committed in plaintext; staged approach per ADR-009 | B1 onward |
@@ -65,19 +66,17 @@ contains **messages written by other people who did not consent to this system.*
 that the owner can read them in the app does not make forwarding them to a model provider the
 same act.
 
-This is not resolved by a checkbox. It is reduced by five habits, all of which belong in the
-product rather than in a policy document:
+**The five controls that reduce it are specified in `ADR-018` §"Privacy" and enforced by SEC-15
+above.** They are not restated here — they were being maintained in four places
+(`ADR-018`, this document, `REQ-001` NFR-14, `CLAUDE.md` §4), which is three too many for a rule
+about other people's messages.
 
-1. **Paste the message, not the day.** The input UI says this at the input, not in settings.
-2. **Provider commitment**: no training on input. Which provider, which commitment, and the
-   date it was verified go in the B6 write-up and are re-checked monthly.
-3. **Raw pastes purge at 90 days**, in backups too — same rule as mail.
-4. **Screenshots are not retained as images** beyond extraction; only the extracted fields
-   and the recognised text persist.
-5. **Never anywhere else.** No raw paste in logs, metrics, traces, or an incident write-up.
+The test that belongs here, because no other document states it:
 
-If a paste would be uncomfortable to show the person who wrote it, it should not be pasted.
-That test is more useful than any rule this document could write.
+> **If a paste would be uncomfortable to show the person who wrote it, it should not be pasted.**
+
+That is more useful than any rule this document could write, and it is the one part of this
+control that cannot be implemented in code.
 
 ## File storage — what the presigned model protects against
 

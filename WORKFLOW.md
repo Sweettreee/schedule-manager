@@ -1,6 +1,6 @@
 # WORKFLOW.md — How work is done in this project
 
-**Last revised**: 2026-08-22 (after REVIEW-001, then ADR-017).
+**Last revised**: 2026-08-25 (consolidation: B26 added to the lanes, language rule widened, ADR-revision carve-out stated).
 
 ## Branching and commits
 
@@ -16,8 +16,10 @@
 Blocks are not a single chain. Three tracks run in parallel because they depend on different
 inputs (BLOCKS-001 §2):
 
-- **App track** (B1 → … → B8, plus B23, B24; then B20 → B21) depends on **collected mail
-  volume**, which accumulates in wall-clock time and cannot be hurried.
+- **App track** (B1 → … → B8, plus B23, B24, **B26**; then B20 → B21) depends on **collected
+  item volume**, which accumulates in wall-clock time and cannot be hurried. Since ADR-022 this
+  is no longer mail-only: B3's scraper can backfill a notice board's existing pages, where a
+  mailbox can only grow forward in time.
 - **Infra track** (B9 → B10 → … → B17) depends only on the previous infra block.
 - **File track** (B14 → B18 → B19, plus conditional B25) depends on the infra track reaching
   a deployed API and S3.
@@ -70,7 +72,9 @@ only drop in a later release.
 
 ## Documentation rules
 
-- Documents in English; UI strings in Korean.
+- Documents in English; **Korean is correct** for UI strings, enum labels (`DATA-001`), and goal
+  statements where the Korean states the felt need more precisely than a translation would —
+  *"까먹지 않는다"* is the requirement, not decoration. Do not translate those for consistency.
 - ADRs are numbered in the order decisions are made. Numbers are never reserved in advance
   for decisions not yet taken.
 - **Blocks follow the same rule** (`BLOCKS-001` §3): numbers are assigned in creation order,
@@ -79,6 +83,11 @@ only drop in a later release.
 - An ADR is never edited to reverse a decision — write a new ADR and mark the old one
   `Amended by ADR-XXX` or `Superseded by ADR-XXX`. Correcting a factual error or adding a
   cross-reference is not a reversal and may be edited in place.
+  **This holds even for a same-day revision made before any implementation.** `ADR-022` was
+  revised in place hours after being written, which left one file containing two contradictory
+  ladders and a decision that reversed itself; a reference to "ADR-022" then meant two different
+  things. It was split into `ADR-022` + `ADR-023` on 2026-08-25. The cost of a second ADR is one
+  file; the cost of an ambiguous reference is every document that cites it.
 - Incidents and outages get a short write-up in `docs/incidents/`. **This includes planned
   GameDay drills** — see `docs/GAMEDAY-001-failure-drills.md`. For an SRE portfolio these
   are among the most valuable artefacts in the repository, and waiting for organic failures

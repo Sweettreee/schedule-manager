@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Date**: 2026-08-22
-**Related**: ADR-004, ADR-005, ADR-008, ARCH-001, REQ-001 §7, OPS-001
+**Related**: ADR-004, ADR-005, ADR-008, **ADR-024**, ARCH-001, REQ-001 §7, OPS-001
 
 ## Context
 
@@ -88,8 +88,15 @@ must record the SLO error-budget figure**, because after seven days the raw data
   project's constraint discipline: the 2 GiB limit is what forced ADR-006 (no JVM) and
   ADR-008 (Flux over ArgoCD), and relaxing it here would make those decisions look arbitrary.
   It also adds a shutdown scheduler to operate and makes the dashboard unavailable at night,
-  which conflicts with metric M-3. Available later as ARCH-001 lever 1 if measurement demands
-  it.
+  which conflicts with metric M-3.
+
+  > **Cross-reference added 2026-08-25.** What is rejected here is `t4g.medium` **plus** a
+  > shutdown — paying for a larger instance and then stopping it. **`ADR-024` subsequently
+  > adopted a nightly shutdown on the `t4g.small` already chosen**, 02:00–08:00 KST, and answers
+  > the two objections raised above: the scheduler is one rule outside the instance, and the
+  > window was chosen to contain no plausible dashboard visit, with an M-3 re-check booked at
+  > the first monthly review. The memory argument in this ADR is untouched — a shutdown does not
+  > create RAM.
 - **Logs-based observability only (no metrics)** — cheaper still, but an SLO expressed over
   time cannot be computed from unaggregated logs on this node.
 

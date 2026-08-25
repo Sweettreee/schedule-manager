@@ -1,15 +1,19 @@
 # CLAUDE.md — operating rules for Claude Code in this repository
 
 Read this file completely before doing anything. It is the contract for this project.
-**Last revised**: 2026-08-23 (source list aligned with ADR-021; previously revised after
-REVIEW-001, then ADR-017).
+**Last revised**: 2026-08-25 (consolidation: policy that lives in another document is now
+pointed to rather than restated; ADR-023 named rungs; ADR-024 scheduled shutdown).
 
 ## 1. What this project is
 
-**Schedule Manager** — a personal information hub. Gmail, school-notice RSS, official APIs
-(Worknet, Saramin — ADR-021), an LMS iCalendar feed and pasted content are collected into a
-single `items` table, shown on a time axis with reminders, made searchable, and accompanied
-by file synchronisation to S3.
+**Schedule Manager** — a personal information hub. Everything the owner needs from several
+scattered sources is collected into a single `items` table, shown on a time axis with reminders,
+made searchable, and accompanied by file synchronisation to S3.
+
+**Where the data comes from is decided by the channel ladder in `docs/SOURCES-001-channel-policy.md`
+§1, which is the only authoritative statement of it.** Do not restate the ladder, the scraping
+gate (§4) or the authenticated-fetch gate (§5) in any other file — they moved three times in
+three days and every restatement went stale within days. Link instead.
 
 The owner's goals, in priority order:
 
@@ -36,27 +40,26 @@ newsletters). File synchronisation spans ingest and is the project's richest clo
 5. **Respect ADR-004 (control over convenience).** If you are about to propose a managed
    AWS service that hides a layer the owner wants to learn, say so explicitly and justify
    it against the three allowed exceptions in ADR-004.
-6. **One block at a time.** Do not implement work belonging to a later block, even if it
-   seems trivial to add now.
+6. **One block at a time, within a lane.** The roadmap runs three parallel lanes — app, infra,
+   file (`BLOCKS-001` §2) — and never two blocks at once *inside* one lane. Do not implement
+   work belonging to a later block in **any** lane, even if it seems trivial to add now.
 7. **Update `STATUS.md` at the end of every block.** The project is designed to be paused
    and resumed; `STATUS.md` is the resume point.
 8. **Never weaken a safety property to make a block pass.** Specifically: the freshness
    alerting in ADR-012, the `UNIQUE (source, source_id)` constraint, and the anonymisation
    rule in SEC-001. If one of these blocks progress, stop and raise it.
 
-## 3. Testing policy (ADR-010)
+## 3. Testing policy
 
-- **TDD is mandatory** for classification rules and filter rules. The specification already
-  exists in `REQ-001`, so write the failing test first.
-- **Test-after** for parsing, API endpoints, and integration paths.
-- **Integration tests** run against a real PostgreSQL via testcontainers. Three paths are
-  mandatory: (a) mail fixture → Item → DB → re-collection is ignored as duplicate;
-  (b) list API returns correct results for tab, sort, and date filters;
-  (c) incremental collection: the second run fetches strictly fewer messages than the first.
-- **No browser E2E tests.**
-- **Bug rule**: when a misclassification or parse error is found, first add the offending
-  message as an anonymised fixture and write a failing test, then fix the rule.
-- Never call the real Gmail API in tests. Use recorded, anonymised response fixtures.
+**The policy is `ADR-010`; the working practice is `WORKFLOW.md` §"Testing".** Read them rather
+than this section. The three points that most often get skipped:
+
+- **TDD is mandatory** for classification and filter rules — their specification already exists
+  in `REQ-001` §2.2/§2.3, so the failing test is writable before the code.
+- **Never call a real external API in tests** — not Gmail, not the recruitment APIs, not a live
+  site. Recorded, anonymised fixtures only.
+- **Bug rule**: on finding a misclassification or parse error, add the offending input as an
+  anonymised fixture with a failing test *first*, then fix the rule.
 
 ## 4. Style and conventions
 
@@ -80,9 +83,17 @@ newsletters). File synchronisation spans ingest and is the project's richest clo
   (currently 1 USD = 1,400 KRW → an effective ceiling of about **USD 21.4/month**).
   Any proposal that could exceed it must be flagged before implementation, with the
   estimated monthly figure in **both** USD and KRW.
-- Never create: NAT Gateway, ALB/NLB, RDS, EKS, ECR, Elastic IPs left unattached, or any
-  resource billed per hour that is not in `ARCH-001`.
+- **The design currently costs ≈ USD 18.3 ≈ 25,600 KRW**, and it only fits because the instance
+  is stopped 02:00–08:00 KST (**ADR-024**). Without that shutdown the same design lists at
+  ≈ 30,900 KRW and breaches the ceiling. Treat the shutdown as load-bearing, not as an
+  optimisation someone can quietly drop.
+- Never create: NAT Gateway, ALB/NLB, RDS, EKS, ECR, or any resource billed per hour that is
+  not in `ARCH-001`.
   (ECR is excluded because container images live in **ghcr.io** — ADR-011.)
+- **Elastic IPs**: exactly **one**, permanently attached, required by ADR-024 because a stopped
+  instance loses its auto-assigned address. Never create a second, and never leave one
+  unattached — an unattached Elastic IP bills for nothing and is on the monthly orphan check
+  (`OPS-001` §7).
 - **Metered spend needs a code-level cap, not just an alarm.** LLM extraction is capped at 300
   calls/month (FR-17) and file storage is alarmed at 10 GB (NFR-13), because the realistic
   failure is a retry loop and an alarm does not stop one.
@@ -99,6 +110,10 @@ as an ADR.
 
 ## 7. Where to start right now
 
-Read, in this order: `STATUS.md` → `docs/BLOCKS-001-roadmap.md` → the spec file for the
-current block in `docs/blocks/`. The current block is named at the top of `STATUS.md`.
-Do not read further ahead than the current block's spec.
+Read, in this order: `STATUS.md` → `docs/BLOCKS-001-roadmap.md` → the spec file for the block
+you have been pointed at, in `docs/blocks/`. The current block of each lane is named at the top
+of `STATUS.md`.
+
+**Do not read past the current block of the lane you are working.** Reading the current block of
+a *different* lane is fine and often necessary — the lanes run in parallel, so "the current
+block" is not a single thing.

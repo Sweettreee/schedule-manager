@@ -19,7 +19,7 @@ over a single `items` table (`ADR-003`):
 |---|---|---|
 | **Schedules and materials** | time output | Week/month view + deadline reminders |
 | **Unified search** | content output | Trigram substring search across everything |
-| **Job postings and newsletters** | ingest | Gmail + RSS + **official APIs** + paste/screenshot |
+| **Job postings and newsletters** | ingest | **Official APIs** + Gmail + scraped public pages + paste/screenshot |
 | **File synchronisation** | ingest **and** the project's richest cloud curriculum | L0 web locker + L1 one-way laptop agent |
 
 Deferred with named triggers, not vaguely: file sync L2/L3, Korean morphological search,
@@ -33,6 +33,7 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
 | What v1 must do | `docs/REQ-001-requirements.md` |
 | Where the project currently stands | `STATUS.md` |
 | What to build next | `docs/BLOCKS-001-roadmap.md`, `docs/blocks/` |
+| Where a given piece of information comes from | `docs/SOURCES-001-channel-policy.md` |
 | Why a technology was chosen | `docs/adr/` |
 | How we work (branches, tests, DoD) | `WORKFLOW.md` |
 | The rules Claude Code must follow | `CLAUDE.md` |
@@ -52,12 +53,12 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
     ARCH-001-target-architecture.md
     SEC-001-security-baseline.md
     OPS-001-cost-guardrails.md
-    SOURCES-001-channel-policy.md
+    SOURCES-001-channel-policy.md      the source register — and the authority on channels
     GAMEDAY-001-failure-drills.md
     BLOCKS-001-roadmap.md
-    REVIEW-001-plan-assessment.md
-    adr/                ADR-000 template, ADR-001 … ADR-021
-    blocks/             B0-B8-specs.md, B10-B11-specs.md, B23-B25-specs.md
+    PROMPTS-001-plan-review.md         reusable review prompt + scoring rubric
+    adr/                ADR-000 template, ADR-001 … ADR-024
+    blocks/             B0-B8, B10-B11, B23-B25, B26
     incidents/          incident write-ups (see README there)
   CLAUDE.md
   WORKFLOW.md
@@ -68,9 +69,16 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
 
 ## Current state
 
-Pre-implementation. Planning documents were reviewed externally on 2026-08-22
-(`docs/REVIEW-001-plan-assessment.md`) and then revised again the same day when the owner
-restated the capability priorities (`ADR-017`). Block B0 is the next action. See `STATUS.md`.
+**Pre-implementation — no code exists yet.**
+
+**Next action: B3, the scraper adapter for the school notice board.** Its entry condition was
+satisfied on 2026-08-24: the list URL, selectors, pagination and all nine scraping-gate
+conditions are recorded in `SOURCES-001` §2.2. **B0 continues in parallel** — the remaining
+items in it do not block B3. See `STATUS.md`, which is the resume point.
+
+The planning set was reviewed twice (2026-08-22, 2026-08-23), rescoped by `ADR-017`, had its
+channel policy rewritten by `ADR-022`/`ADR-023`, and consolidated on 2026-08-25 so that each
+rule has exactly one authoritative home. `STATUS.md` §8 carries the full revision log.
 
 ## Stack (decided, see ADRs)
 
@@ -82,16 +90,22 @@ restated the capability priorities (`ADR-017`). Block B0 is the next action. See
   MinIO locally.
 - **Extraction**: an external LLM for paste/screenshot input only, capped and
   confirmation-gated (ADR-018)
-- **Sources**: official APIs first (Worknet, Saramin), then tokenised feeds (LMS iCalendar),
-  then public feeds, then email, then paste. Commercial-site scraping is prohibited
-  (ADR-021, `docs/SOURCES-001-channel-policy.md`)
+- **Sources**: a named ladder tried top-down — **`API`** → **`FEED`** → **`SCRAPE/MAIL`** →
+  **`PASTE`**, plus a conditional **`AGENT`** rung. Scraping behind a login and any
+  redistribution are prohibited permanently.
+  **The ladder, the nine-condition scraping gate and the per-source register live in
+  [`docs/SOURCES-001-channel-policy.md`](docs/SOURCES-001-channel-policy.md) — the one
+  authoritative copy.** Why it has this shape: ADR-021, ADR-022, ADR-023
 - **Runtime**: Docker → local k3d → k3s on a single EC2 `t4g.small` (ADR-005)
 - **Registry**: GitHub Container Registry, ghcr.io (ADR-011)
 - **Observability**: VictoriaMetrics single-node + node-exporter; Grafana on demand (ADR-013)
 - **Liveness**: external dead man's switch + in-app staleness banner (ADR-012)
 - **IaC**: console first, then Terraform via `import` (ADR-016)
 - **Delivery**: GitHub Actions → Flux (GitOps, separate infra repo from B16)
-- **Budget ceiling**: 30,000 KRW / month at an assumed 1 USD = 1,400 KRW (ARCH-001)
+- **Schedule**: the instance is stopped **02:00–08:00 KST** by design; the collector runs at
+  08:05 (ADR-024)
+- **Budget ceiling**: 30,000 KRW / month at an assumed 1 USD = 1,400 KRW (ARCH-001).
+  **The design costs ≈ 25,600 KRW**, and fits only because of the shutdown above
 
 ## Local secrets
 

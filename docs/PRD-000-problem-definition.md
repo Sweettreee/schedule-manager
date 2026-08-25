@@ -1,7 +1,7 @@
 # PRD-000 — Problem Definition
 
 **Status**: Approved
-**Last updated**: 2026-08-22 (revised after REVIEW-001, then ADR-017: capability priority)
+**Last updated**: 2026-08-25 (M-2's target aligned with §4.1, which defines it)
 
 ## 1. The problem
 
@@ -51,7 +51,7 @@ Measured from real usage, not from feature completion.
 | ID | Metric | Target | How it is measured |
 |---|---|---|---|
 | M-1 | Manual re-entry of information | ≤ 3 items per week | `usage_events.kind = 'MANUAL_ENTRY'`, **plus** the coverage audit below |
-| M-2 | Postings that existed but never reached the dashboard | 0 per audit round | **Coverage audit** (§4.1) — *not* self-reporting |
+| M-2 | Postings that existed but never reached the dashboard | **Coverage ≥ 90% for every audited source, and no source below 70% for two consecutive audits** (§4.1 derives this) | **Coverage audit** (§4.1) — *not* self-reporting |
 | M-3 | Days per week the dashboard is opened | ≥ 5 | `usage_events.kind = 'DASHBOARD_OPEN'`, one per day |
 | M-4 | Deployments | ≥ 1 per month (the project must stay alive) | git tags / Flux reconcile history |
 | M-5 | Monthly operating cost | ≤ 30,000 KRW (see NFR-1) | AWS Cost Explorer, monthly review |
@@ -71,7 +71,7 @@ The fix is to compare against an external ground truth.
 
 **Coverage audit — weekly, about 10 minutes:**
 
-1. Open one source site (rotate: Wevity → JobKorea → Linkareer → university notices;
+1. Open one source site (rotate: Wevity → JobKorea → 고용24/Saramin → university notices;
    from B23, Worknet and Saramin join the rotation — for those two the comparison can run
    in code against the API, per ADR-021, without ceasing to be an external reference).
 2. Take the **10 most recent postings** from the last 7 days.

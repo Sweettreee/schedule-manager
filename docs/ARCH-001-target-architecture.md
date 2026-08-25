@@ -1,8 +1,9 @@
 # ARCH-001 — Target Architecture, Memory Ledger and Cost Model
 
 **Status**: Approved (Phase 2 target)
-**Last updated**: 2026-08-22 (revised after REVIEW-001, then ADR-017)
-**Related**: ADR-004, ADR-005, ADR-006, ADR-008, ADR-011 … ADR-014, ADR-018, ADR-020
+**Last updated**: 2026-08-25 (ADR-024: nightly shutdown adopted into the design; cost model
+rebuilt; Elastic IP added)
+**Related**: ADR-004, ADR-005, ADR-006, ADR-008, ADR-011 … ADR-014, ADR-018, ADR-020, **ADR-024**
 
 ## Changes in this revision
 
@@ -148,12 +149,15 @@ in USD. Without it, "30,000 KRW" is not a testable condition, and a 5% FX move b
 
 ### Monthly estimate
 
+**The instance runs 18 of 24 hours** — stopped 02:00–08:00 KST, by design (**ADR-024**). Only the
+compute line is affected; storage and the IPv4 address bill whether the instance runs or not.
+
 | Item | USD | Note |
 |---|---|---|
-| EC2 `t4g.small` on-demand, Seoul | ~15.2 | Seoul is ~20–25% above `us-east-1`'s $0.0168/hr |
+| EC2 `t4g.small` on-demand, Seoul, **18 h/day** | **~11.4** | $15.2 at 24×7 × 0.75. Seoul is ~20–25% above `us-east-1`'s $0.0168/hr |
 | EBS gp3 root, 12 GiB | ~1.1 | OS, k3s, container images |
 | EBS gp3 data, 10 GiB (ADR-014) | ~0.9 | PostgreSQL PVC |
-| Public IPv4 address | ~3.7 | $0.005/hr since 2024 |
+| **Elastic IP, permanently attached** (ADR-024) | ~3.7 | $0.005/hr since 2024, billed in use or not. Required because a stopped instance loses an auto-assigned address |
 | S3 daily backups (<1 GiB, lifecycle-expired) | <0.2 | |
 | **S3 file storage, 5 GB Standard (ADR-020)** | **~0.15** | course materials, one semester |
 | **S3 requests (agent, ~2k PUT + GET/month)** | **<0.02** | |
@@ -161,12 +165,17 @@ in USD. Without it, "30,000 KRW" is not a testable condition, and a 5% FX move b
 | Data transfer out (single user) | <0.5 | file egress at 5 GB sits inside AWS's 100 GB/month allowance |
 | Container registry (ghcr.io) | **0** | ADR-011 — this line is why ECR was rejected |
 | Dead man's switch (healthchecks.io free) | **0** | ADR-012 |
-| **Total** | **≈ 22.1** | **≈ 30,900 KRW at 1,400** |
+| **Total** | **≈ 18.3** | **≈ 25,600 KRW at 1,400** |
 
-**This is over the ceiling — by about 900 KRW, or 3% — and the document says so rather than
-rounding down.** File sync and extraction added roughly $0.5/month between them; the overage
-was already there before either. That is the honest state of the design, and it is acceptable
-for the following reason:
+**The design is inside the 30,000 KRW ceiling, with about 15% margin** — and it is inside only
+because of the shutdown. Run 24×7, the same architecture totals **≈ $22.1 ≈ 30,900 KRW**, which
+breaches NFR-1 by about 3%. That list figure is kept deliberately: it is what `OPS-001` §3's
+escalation ladder measures against if the schedule ever stops working.
+
+The overage was in this design from the day it was written, and the document said so rather than
+rounding down. **ADR-024 fixes it by spending a trade the project had already made** —
+`PRD-000` §5 declares availability a non-goal — rather than by moving the ceiling, which
+`OPS-001` §3 forbids.
 
 ### Credits change the sequencing, not the arithmetic
 
@@ -186,18 +195,23 @@ estimate in this table. The decision about which lever to pull is therefore made
 numbers, not from this forecast.
 
 > **The credit expiry date is the single most important date in this project's operations.**
-> On that day the monthly bill goes from 0 to about $22.1 with no warning from AWS.
+> On that day the monthly bill goes from 0 to about $18.3 with no warning from AWS.
 > It is recorded in `STATUS.md` as a dated field the moment the account is created (B10),
 > and OPS-001 §3 defines what happens 60 days before it.
 
 ### Levers, in the order they should be pulled
 
-1. **Scheduled shutdown outside usage hours** — viable because availability is explicitly not
-   a requirement (PRD-000 §5). Stopping the instance 10 hours a night cuts EC2 by ~40%,
-   bringing the total to about **$15.5 ≈ 21,700 KRW**, comfortably inside the ceiling.
-   Constraints: the collector CronJob must be scheduled to run shortly after start-up, and
-   the dashboard is unreachable while stopped — check this against M-3 (dashboard opened
-   ≥ 5 days/week) before adopting. **This is the default lever.**
+1. **Scheduled shutdown outside usage hours** — **ADOPTED, not held in reserve. See ADR-024.**
+   The instance is stopped **02:00–08:00 KST** (6 hours), cutting EC2 by 25% and bringing the
+   total to **≈ $18.3 ≈ 25,600 KRW**. Availability is explicitly not a requirement (PRD-000 §5),
+   which is what makes this spendable.
+   Three consequences, all part of the decision: the collector runs at **08:05**, shortly after
+   start-up; an **Elastic IP is required**, because a stopped instance loses its auto-assigned
+   address; and the window is **re-checked against measured M-3 data** at the first monthly
+   review (OPS-001 §7). A wider window (10 hours → ≈21,700 KRW) was available and was not taken
+   — six hours already clears the ceiling, and the extra four hours of availability are worth
+   more than headroom that is not needed.
+   **This lever is now spent. Levers 2–4 are what remains in reserve.**
 2. **Reserved Instance (1yr)** — `t4g.small` drops roughly 40%. Requires a 12-month
    commitment, so only after the design has stabilised and the credits are close to gone.
 3. **Drop to `t4g.micro` (1 GiB)** — halves compute but the memory ledger above shows the
