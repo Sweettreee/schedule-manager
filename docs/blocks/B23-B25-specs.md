@@ -2,7 +2,10 @@
 
 **Status**: Approved
 **Created**: 2026-08-22
-**Related**: ADR-021, SOURCES-001, ADR-019, ADR-020
+**Last updated**: 2026-08-25 (**B24 reduced to ICS only** — B0 established the LMS has no forum
+RSS, so the RSS adapter is removed from the project entirely. Earlier the same day: three stale
+cross-references corrected; B24's RSS dependency fixed)
+**Related**: ADR-021, ADR-022, **ADR-023**, SOURCES-001, ADR-019, ADR-020
 
 > **Numbering**: these are numbered in creation order, not execution order
 > (`BLOCKS-001` §3). Their position in the sequence is in the roadmap table.
@@ -10,8 +13,12 @@
 | Block | Runs after | Status |
 |---|---|---|
 | **B23** — public recruitment APIs | B3 (any time after) | Confirmed |
-| **B24** — LMS calendar and notices | B7 | Confirmed, pending B0 findings |
+| **B24** — LMS calendar | B7 | **Confirmed 2026-08-24 (ICS).** **Scope reduced 2026-08-25: ICS only** — the LMS does not support forum RSS |
 | **B25** — agent-side authenticated fetch | B18 | **Conditional** — gate in §B25 |
+
+> **Rung naming (ADR-022 rev. 2).** Rungs are named, not numbered (`SOURCES-001` §1). The gate
+> these specs call "rung 6" is the **`AGENT`** rung, `SOURCES-001` §5; its five conditions are
+> unchanged. The Wevity scraper is **B26**, a separate spec file.
 
 ---
 
@@ -30,7 +37,8 @@ makes part of the coverage audit (PRD-000 §4.1) executable in code.
    - 공공데이터포털 (data.go.kr) → 한국고용정보원 워크넷 채용정보 API. Register, get the
      service key, note the daily cap.
    - `oapi.saramin.co.kr` → apply, receive the access key. **500 calls/day.** Pricing is not
-     published in the guide — confirm at application and record it in `SOURCES-001` §6.
+     published in the guide — confirm at application and record it in `SOURCES-001` §7 (the quota and
+     key register; §6 is the procedure for adding a source).
 2. **`ApiSource` adapter** behind the `Source` abstraction from B3. HTTP GET → JSON → Item.
    Two implementations, one shared shape.
 3. **Query configuration in one place** (FR-2): keyword, region, date window, per source.
@@ -48,7 +56,10 @@ makes part of the coverage audit (PRD-000 §4.1) executable in code.
 
 ### Acceptance criteria
 
-- One collection run pulls Gmail + RSS + two APIs and writes **one** `collection_runs` row.
+- One collection run pulls **Gmail + the school-board scraper + two APIs** and writes **one**
+  `collection_runs` row. *(Corrected 2026-08-25: this said "Gmail + RSS". ADR-022 moved the RSS
+  adapter to B24, which runs after B7 — so at B23 there is no RSS source, and the criterion as
+  written was unsatisfiable.)*
 - A source hitting its quota records `PARTIAL`; the others still complete.
 - The second run fetches strictly fewer new items than the first.
 - No API key appears in git, logs, or `raw`.
@@ -70,17 +81,69 @@ would get the key suspended, not because it would cost money.
 
 ### Not in this block
 
-Scraping anything. Saramin's website is explicitly excluded now that its API is used
-(SOURCES-001 §7).
+**Scraping.** Under ADR-022 scraping is permitted on the `SCRAPE/MAIL` rung, but not here:
+**Saramin's website stays excluded** because this block holds its official API key, and scraping a site whose API you
+already hold is indefensible (`SOURCES-001` §8). The Wevity scraper is **B26**.
+JobKorea stays email-only on decided case law.
 
 ---
 
-## B24 — LMS calendar and notices
+## B24 — LMS calendar
 
 **Goal**: 과제·시험 마감이 자동으로 일정 뷰에 들어온다 — **with no password stored anywhere.**
 
+**Scope reduced 2026-08-25.** This block was "LMS calendar *and notices*". The notices half
+depended on a Moodle forum RSS feed that **this LMS does not provide** (`SOURCES-001` §2), so
+the block is **the ICS adapter and nothing else**. LMS course notices are `PASTE` (B6).
+
 Depends on B7 (the time view) — deadlines with nowhere to display them are not a deliverable.
-Depends on B0 having found the URLs.
+
+**B0 findings, 2026-08-24 (`SOURCES-001` §2, §2.1):** the LMS is **Moodle core under a
+coursemos / UBION wrapper**. The Calendar nav item is hidden by the theme but the route is
+live. The export feed is confirmed working:
+
+```
+https://lms.chungbuk.ac.kr/calendar/export_execute.php
+    ?userid=<userid>&authtoken=<token>&preset_what=all&preset_time=recentupcoming
+```
+
+**No cookie or header is required — the `authtoken` parameter is the entire credential.**
+
+### 0. Two non-negotiables before any other task
+
+**(a) `preset_time=recentupcoming` is the only permitted value. `monthnow` is prohibited.**
+
+`monthnow` is fixed to the current calendar month. It does not error — it returns HTTP 200, a
+well-formed non-empty `.ics` that parses cleanly, **while next month's deadlines are simply
+absent**. `NFR-17` does not fire, because the result is not empty; it is truncated. The
+dashboard looks healthy while the project's highest-priority capability silently fails.
+
+Required, per `NFR-19`:
+
+1. **The Secret holds base URL, `userid` and `authtoken` as three separate values** — never the
+   assembled URL. `preset_what` and `preset_time` are assembled in code, because a parameter
+   buried inside a secret is a parameter **no test can assert**.
+2. **`preset_time` is a constant in the adapter, not a configuration setting.** There is no
+   legitimate second value, so offering the choice only creates a way to get it wrong.
+3. **Startup validation**: if the assembled URL does not carry `preset_time=recentupcoming`, the
+   adapter **refuses to run.** A truncated feed is worse than no feed — no feed is visible, a
+   truncated one is not.
+4. **A unit test asserts the assembled URL contains `preset_time=recentupcoming`** and never
+   `monthnow`.
+5. **`max(DTSTART)` is recorded per run.** Not a hard failure — a month with genuinely no
+   deadlines is legitimate — but a collapse of the horizon back to the current month must be
+   observable.
+
+**(b) The token is a credential and must be masked everywhere.**
+
+See `docs/incidents/2026-08-24-lms-token-near-miss.md`. **The token in use at the time of
+writing is pending rotation and must be rotated before this block wires it into anything.**
+
+- `authtoken` is **masked in every log line, exception message and traceback.** A fetch failure
+  that prints the URL has written the credential into the log — this is a code requirement, not
+  a guideline.
+- The ICS URL is **never rendered in the dashboard**, including in an error banner.
+- Rotate again at the end of the block if the token was used during development.
 
 ### Tasks
 
@@ -97,15 +160,26 @@ Depends on B0 having found the URLs.
    | `DESCRIPTION` | `body_text` |
 
    The mapping is near-direct because `ADR-019`'s model was derived from the same standard.
-2. `source = 'ICS'`, `type = 'SCHEDULE'`. The enum value already exists — B2 created it
-   (DATA-001), so **no migration is needed here.** That is the forward-only policy paying off.
+2. `source = 'ICS'`, `type = 'SCHEDULE'`. Both enum values are created by **B2's first
+   migration** (DATA-001), so **no migration is needed here** — provided B2 actually shipped the
+   full enum, which now also includes `'SCRAPE'`. That is the forward-only policy paying off, and
+   it only pays off if B2 creates every value the roadmap already knows about.
 3. **Recurring events**: v1 does not support recurrence (ADR-019). Expand `RRULE` occurrences
    **only within the next 90 days** and mark them `extra->>'from_rrule' = true` so a future
    recurrence migration can identify and replace them. Do not store them as if hand-entered.
-4. **Forum RSS adapter** — reuse B3's RSS source. `type = 'NOTICE'`.
+4. **No forum RSS adapter. Removed from this block on 2026-08-25.** This block used to build
+   "the first and only RSS adapter in the project". **B0 established that the LMS does not
+   support forum RSS**, so there is no source for it — and since no other RSS source exists
+   anywhere in this project either (`SOURCES-001` §1.1), **no RSS adapter is written at all.**
+   LMS course notices fall to `PASTE` (B6). `source = 'RSS'` stays in the DATA-001 enum unused
+   and on purpose, because migrations are forward-only (DATA-001, ADR-015).
 5. **The ICS URL is a secret** (SEC-13 pattern): anyone holding it can read the calendar.
-   Store it like any other secret; never log it.
+   Store it per §0(b); never log it.
 6. Reminders (B7) apply automatically to imported deadlines — no new code.
+7. **The forum RSS question is closed** (`SOURCES-001` §2, 2026-08-25): the LMS does not
+   support it, and LMS course notices are therefore `PASTE` (B6), not this block. The
+   check-the-route-not-the-nav lesson still holds for anything else on this LMS — the theme
+   hides the Calendar link while leaving `/calendar/export.php` live.
 
 ### Acceptance criteria
 
@@ -113,6 +187,11 @@ Depends on B0 having found the URLs.
 - **An all-day LMS event renders on the correct KST date** — the off-by-one from ADR-019 is
   the specific failure to check here, and it is invisible until a date is missed.
 - Re-running collection creates no duplicates (`UID` → `source_id`).
+- **The assembled request URL contains `preset_time=recentupcoming`** and the run records a
+  `max(DTSTART)` that extends beyond the current calendar month (given the LMS holds such an
+  event).
+- **No log line, error message or traceback produced by a forced fetch failure contains the
+  token** — verified by deliberately breaking the URL and reading the output.
 - An event deleted in the LMS is handled explicitly — decide and document whether it is
   removed or marked stale. **Do not leave it undefined**: a deadline that no longer exists but
   still alerts is noise, and one that silently vanishes is worse.
@@ -123,6 +202,12 @@ Depends on B0 having found the URLs.
 - Integration: ICS fixture → Items with correct `starts_at`/`due_at`/`all_day`.
 - Unit: an all-day event created in KST round-trips through UTC to the same calendar date.
 - Unit: a timed event with a `TZID` other than Asia/Seoul converts correctly.
+- **Unit: the assembled URL contains `preset_time=recentupcoming` and never `monthnow`**
+  (`NFR-19`).
+- **Unit: the adapter refuses to start when handed a URL whose `preset_time` is anything else** —
+  the startup guard, asserted rather than assumed.
+- **Unit: the token is masked in the exception raised by a failed fetch** — assert the raw
+  token string is absent from the formatted message.
 
 ### If B0 found no ICS export
 
@@ -140,13 +225,16 @@ deadlines. **Record the substitution in `STATUS.md` — do not silently skip the
 > If any fails, the block is closed as "not justified" and that is a successful outcome, not
 > a failure — write it up either way, like B21.
 
-### Gate (SOURCES-001 §4, ADR-021 §3)
+### Gate — the `AGENT` rung (SOURCES-001 **§5**, ADR-021 §3)
+
+*(Corrected 2026-08-25: this cited `SOURCES-001` §4, which is the nine-condition **scraping**
+gate. The five-condition authenticated-fetch gate is **§5**.)*
 
 | # | Condition | Evidence required |
 |---|---|---|
 | 1 | Terms contain no prohibition on automated access | The clause, quoted, with a date |
 | 2 | Own account, **read-only** | Design review: no submit/modify/delete code path exists |
-| 3 | Rungs 1–5 insufficient for **files specifically** | B0 and B24 findings recorded in SOURCES-001 |
+| 3 | `API`, `FEED`, `SCRAPE/MAIL` and `PASTE` all insufficient for **files specifically** | B0 and B24 findings recorded in SOURCES-001 |
 | 4 | The friction is **measured** | `usage_events` shows manual download as a recurring weekly cost |
 | 5 | Failure is loud | Design: zero results ⇒ error |
 

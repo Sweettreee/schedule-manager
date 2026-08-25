@@ -1,6 +1,8 @@
 # Block Specifications — B0 to B8 (Foundation and the Application)
 
-**Last updated**: 2026-08-22 (rewritten after ADR-017; supersedes `B0-B5-specs.md`)
+**Last updated**: 2026-08-25 (**B0's last three non-mail items closed**: no forum RSS, Web
+Services disabled, `User-Agent` fixed. Earlier the same day: B0 made finishable, findings and
+site facts moved to `SOURCES-001` as the single copy, `source='SCRAPE'` adopted)
 
 Detailed enough for Claude Code to start from. Infrastructure blocks are in
 `B10-B11-specs.md`; blocks from B12 onward are specified when reached.
@@ -9,42 +11,156 @@ Detailed enough for Claude Code to start from. Infrastructure blocks are in
 
 ## B0 — Foundation
 
-**Goal**: mail starts accumulating, the school's channels are known, and the repository exists.
+**Goal**: every source has a **recorded rung, by name, with dated evidence**; subscriptions are
+live; the crawler `User-Agent` is fixed; the repository exists.
 
-**B0 is started, not finished.** Mail keeps arriving for the whole life of the project, and
-that accumulation is the input to B4 and B20. Start it today; do not wait for anything.
+**B0 is finishable, and finishing it is the point.** Its product is *evidence*, and evidence can
+be complete — a recorded rung with a dated finding per source, whatever the finding is.
+
+> **What is *not* part of B0: the accumulation of items.** Once subscriptions are live and B3's
+> scraper runs, items keep arriving for the whole life of the project, and that accumulation
+> gates **B4** (≥ 30 items) and **B20** (≥ 100 items). It is a standing condition of the app
+> lane (`BLOCKS-001` §2 and §4), **not** a task inside B0. An earlier version of this spec
+> conflated the two, which made B0 permanently un-completable while still carrying nine
+> acceptance criteria.
+
+Start B0 today; do not wait for anything.
+
+> **Re-scoped 2026-08-24 by ADR-022.** B0 used to be "subscribe to things, and find out whether a
+> feed exists". Now that scraping is permitted, the question per source is *which rung, on
+> what evidence* — so B0's product is a **dated `robots.txt` snapshot and a quoted terms-of-service
+> clause for every candidate source**. Subscriptions still happen, because Gmail is kept as a
+> redundant channel (ADR-022 §6), but they are no longer what makes B0 done.
 
 **Tasks**
 
-1. Create a dedicated Gmail account for collection. Enable 2FA and set recovery options —
-   if this account is lost, the entire pipeline is lost.
-2. Subscribe from that address to: Wevity (Web/Mobile/IT, Game/SW, Science/Engineering,
-   Employment/Startup categories), JobKorea job alerts, and Linkareer alerts if they exist.
-3. **Investigate every source's channel** using the checklist in `SOURCES-001` §3, and fill
-   in the matrix. This is now the largest part of B0, because ADR-021 makes channel choice a
-   decision rather than an assumption.
-   - Work **top-down the ladder**: official API → tokenised feed → public feed → email →
-     paste. Stop at the first hit and record it.
-   - **LMS, in this exact order** (`SOURCES-001` §3): calendar iCal export URL → forum RSS →
-     Moodle Web Services. Stop at the first that works. If web services turn out to be
-     enabled for students, say so loudly — it supersedes ADR-021's rung 6 entirely.
-   - **Apply for the API keys now**, because approval takes time: 공공데이터포털 (Worknet) and
-     `oapi.saramin.co.kr`. Record Saramin's pricing answer — the guide does not publish it.
-   - Check `robots.txt` and terms while you are there (NFR-7), so B3 and B23 do not have to.
-   - **"There is nothing, use paste" is a valid and complete answer** — but it must be
+1. **Create the dedicated collection Gmail account.** Enable 2FA and set recovery options — if
+   this account is lost, the entire mail channel is lost.
+
+2. **Subscribe from that address** to Wevity (Web/Mobile/IT, Game/SW, Science/Engineering,
+   Employment/Startup) and JobKorea job alerts. Check whether Linkareer offers email alerts —
+   since it was excluded from scraping, **this is now its only possible channel.**
+   - **Wevity uses both halves of `SCRAPE/MAIL` deliberately** — the scraper for control, the
+     email for redundancy. They are peers, so using both needs no justification (ADR-022 §0).
+   - **JobKorea's subscription is not optional** — it is the only channel for that source
+     (ADR-022 §5 — the email half of `SCRAPE/MAIL`).
+   - **Wevity's is redundancy**, kept deliberately alongside the B26 scraper so a silent scraper
+     break does not become missing information (ADR-022 §6). Duplicates across the two channels
+     are expected and measurable via `content_hash` (DATA-001).
+
+3. **Run the §3 checklist for every source in `SOURCES-001` §2 and fill in the matrix.** This is
+   the largest part of B0. Work **top-down the ladder** — official API → tokenised feed → public
+   `API` → `FEED` → `SCRAPE/MAIL` → `PASTE` — and stop at the first rung whose gate passes.
+   **`PASTE` is a complete and legitimate answer**, and it is where two whole categories of the
+   owner's schedule live permanently.
+
+   For each source, record with the **date checked**:
+
+   | Evidence | Where it goes |
+   |---|---|
+   | `robots.txt` — the relevant lines verbatim, or **"404 → unrestricted (RFC 9309 §2.3.1.3)"** | `SOURCES-001` §2 notes |
+   | **Terms of service — the automated-collection clause quoted, or its absence recorded, with the URL read** | `SOURCES-001` §2 notes. **This is the condition that decides the source** |
+   | Does the list page render server-side? (`curl` it; are the rows in the response body?) | §2 notes — decides scraping vs. ADR-022 §4.2's fallback chain |
+   | Is there a JSON/GraphQL endpoint the page itself calls? (DevTools → Network → XHR) | §2 notes — cheaper and far more stable than HTML |
+   | Any decided case law or public dispute about scraping it? | §2 notes |
+   | Chosen rung, and why the higher ones were rejected | §2 row |
+
+   - **For any source to be scraped, walk all nine conditions in `SOURCES-001` §4** and record
+     each. A source failing any one of them uses the **email half of `SCRAPE/MAIL`**, or falls to
+     **`PASTE`** — **that is a successful B0 outcome, not a failure.**
+   - **"There is nothing, use paste" remains a valid and complete answer** — but it must be
      *recorded*, because a recorded "none" is what licenses moving down the ladder.
-4. Initialise the repository with this document set, `.gitignore`, `CLAUDE.md`, `README.md`.
+
+4. **Sources with a known answer already** — confirm, do not re-derive:
+
+   | Source | Status entering B0 | What B0 still owes |
+   |---|---|---|
+   | **School notice board** | `robots.txt` **404**, no RSS/Atom → **`SCRAPE/MAIL`, scraping** | Confirm the list page renders server-side (`curl`). Record the list URL, the row selector shape, and the pagination parameter. **B3 is built against this** |
+   | **Wevity** | ✅ **`SCRAPE/MAIL` — all nine scraping conditions pass; uses *both* channels** | Optional: paste the ToS URL and wording into `SOURCES-001` §2 to complete the evidence record |
+   | **Linkareer** | **`SCRAPE/MAIL`, email only — scraping excluded 2026-08-24 (owner's decision)** | Only: do email alerts exist? If not, the source is dropped (`SOURCES-001` §8). **Do not re-investigate scraping** |
+   | **JobKorea** | **`SCRAPE/MAIL`, email only — decided** | Nothing but the subscription. **Do not re-investigate scraping**; the exclusion is on case law, not on `robots.txt` (`SOURCES-001` §8) |
+   | **고용24 / Worknet, Saramin** | **`API`** | Submit the key applications — see task 5 |
+   | **Academic calendar, KakaoTalk** | **`PASTE`** — permanent, by design | Nothing. Scraping being permitted does not make it preferred |
+
+5. **Apply for the API keys now** — approval takes time:
+   - 공공데이터포털 (data.go.kr) → 한국고용정보원 워크넷 채용정보. Note the daily cap.
+   - `oapi.saramin.co.kr` → access key. **Record Saramin's pricing answer**; the guide does not
+     publish it. Put it in `SOURCES-001` §7.
+
+6. **LMS, in this exact order — stop at the first hit** (`SOURCES-001` §3):
+   1. Calendar → iCal export / subscription URL. If present, deadlines are solved with **no
+      password**. Treat the URL as a secret (SEC-13 pattern).
+   2. Notice board / forum → RSS feed URL. **Answered 2026-08-25: the LMS does not support
+      forum RSS.** It was the only remaining RSS candidate in the project, so **no RSS source
+      exists anywhere here and no RSS adapter is built** — B24 is ICS only, and LMS course
+      notices fall to `PASTE` (`SOURCES-001` §1.1, §2).
+   3. Site administration → **Web services**: enabled for students? Almost certainly not, but the
+      check costs five minutes and if enabled it reaches course materials through an official API
+      and **supersedes the `AGENT` rung entirely.** **Say so loudly** — it would be the best
+      available outcome. **Answered 2026-08-25: disabled.** The `AGENT` rung (`SOURCES-001` §5,
+      B25) remains the only path to course materials, and remains conditional.
+   4. Only if 1–3 all fail: evaluate the **`AGENT`** rung against `SOURCES-001` §5.
+
+7. **Fix the crawler `User-Agent` string** and record it in `SOURCES-001` §7.
+   **Done 2026-08-25** — `schedule-manager/0.1 (personal use; +kimnoell1225@gmail.com)`.
+   `SOURCES-001` §7 is the record; B3 sets it in one place. Shape:
+   `schedule-manager/<version> (personal use; +<contact email>)`.
+   It must contain no crawler name this project is not — no `Claude`, `anthropic-ai`, `GPTBot`.
+   **Not to evade a block: because claiming to be a crawler you are not is a false identifier**,
+   and ADR-022 condition 4 forbids it. A site that blocks the honest UA sends that source to
+   the email half of `SCRAPE/MAIL`, or to `PASTE`.
+
+8. **Initialise the repository** with this document set, `.gitignore`, `CLAUDE.md`, `README.md`.
    Enable GitHub **secret scanning with push protection** (SEC-14).
-5. Record in `STATUS.md`: subscriptions and their dates, and the school-channel findings.
+
+9. **Record in `STATUS.md`**: subscriptions and their dates, the per-source rung decisions (by
+   name), the
+   LMS answer, and the API key application dates.
+
+**Progress as of 2026-08-25 — B0 is partially complete**
+
+**The findings themselves live in `SOURCES-001` §2, dated, and nowhere else.** They were being
+maintained in five files at once. Read the matrix there; this spec tracks only what B0 still
+owes:
+
+| Still owed | Blocks |
+|---|---|
+| **Email subscriptions — activate and report, JobKorea's included.** The dedicated Gmail account, JobKorea's alert (that source's *only* channel), Wevity's alert (redundancy), and whether Linkareer offers alerts at all (its only remaining channel — if none, it is dropped) | B1/B2 |
+| 사람인 API key — approval pending; record the pricing answer on approval | B23's second source |
+
+**This is the whole of what B0 still owes, and it is all mail.** Everything else is resolved:
+school board ✅ `SCRAPE/MAIL` (**B3 unblocked**), LMS calendar ICS ✅ `FEED` (**B24**),
+**LMS forum RSS ✅ answered 2026-08-25 — not supported**, **LMS Web Services ✅ answered
+2026-08-25 — disabled**, **crawler `User-Agent` ✅ fixed 2026-08-25 (`SOURCES-001` §7)**,
+고용24 key ✅ received (**B23 startable**), Linkareer scraping excluded by owner decision,
+Wevity gate ✅ passed (**B26 unblocked**).
+
+**Two of those answers were negative, and a negative answer is a complete one.** No forum RSS
+means the project has **no RSS source at all**, so B24 is ICS only and no RSS adapter is written
+anywhere (`SOURCES-001` §1.1). Web Services being disabled means the `AGENT` gate (§5, B25) is
+the only remaining path to course materials.
+
+A **near-miss** was recorded during this investigation:
+`docs/incidents/2026-08-24-lms-token-near-miss.md`. **The LMS token is pending rotation.**
 
 **Acceptance criteria**
-- At least three sources are subscribed and at least one message has arrived.
-- `SOURCES-001` §2 has a status for **every** source, and §3's checklist is answered for each.
+
+- **`SOURCES-001` §2 has, for every source: a chosen rung by name, a dated `robots.txt` finding, and a
+  dated terms-of-service finding.** A quoted prohibition is as complete an answer as a quoted
+  permission.
+- **Every source to be scraped has all nine `SOURCES-001` §4 conditions recorded**, including
+  the server-side-render check.
+- The school notice board has a recorded list URL and a confirmed server-side render — **B3
+  cannot start without this.**
+- The LMS question has a written answer, whatever it is, for all three steps.
 - The two API key applications are submitted (approval may still be pending).
-- The LMS question has a written answer, whatever it is.
+- At least two email subscriptions are active and at least one message has arrived. JobKorea's is
+  one of them.
+- The crawler `User-Agent` string is fixed and recorded.
 - `git log` shows the initial documentation commit.
 
-**Not in this block**: any code.
+**Not in this block**: any code. **No test fetches beyond a single manual `curl` per source** to
+answer the render check — a `curl` is investigation, a loop is a collector, and collectors are B3.
 
 ---
 
@@ -85,7 +201,8 @@ that accumulation is the input to B4 and B20. Start it today; do not wait for an
 2. Alembic migration creating **the full schema from `DATA-001`**: `items` (including
    `starts_at`, `all_day`), `collection_runs`, `collector_state`, `usage_events`,
    `reminders`, `devices`, `blobs`, `files`, `file_versions` — every CHECK constraint and
-   index included.
+   index included — **including `'SCRAPE'` in the `items_source_check` constraint**, which B3
+   needs and which cannot be added later without a migration plus a backfill of mislabelled rows.
    - Yes, most of these are unused until B7 and B14. Create them now anyway: migrations are
      forward-only (ADR-015) and ADR-020 explains why lineage columns must exist from the
      first row rather than be retrofitted.
@@ -119,33 +236,112 @@ that accumulation is the input to B4 and B20. Start it today; do not wait for an
 
 ---
 
-## B3 — RSS collector (school notices)
+## B3 — Scraper adapter (school notice board)
 
-**Goal**: school notices land in the same table as mail, through the same pipeline.
+**Goal**: school notices land in the same table as mail, through the same pipeline — and the
+scraping gate machinery exists once, correctly, for every scraper that follows.
 
-This block exists early because school notices are a **core source** under ADR-017, and
-because it is the cheapest possible proof that ADR-003's one-table design extends. If adding a
-second source type needs more than a new adapter, ADR-003 was wrong and now is when to find
-out.
+> **Re-scoped 2026-08-24 by ADR-022.** This block was "RSS collector", with a fallback of "if B0
+> found no feed, prove the adapter against an arbitrary public feed and route school notices to
+> paste". B0 found no feed **and no `robots.txt`**, and paste for a board that updates weekly is a
+> permanent manual tax on the highest-priority capability. So the block builds the **scraper**
+> instead, and the RSS adapter moves to **B24**, where the LMS forum feed actually exists.
+
+**Why the school board and not a job site.** It is the safest scraping target in the project:
+non-commercial `.ac.kr`, no database interest, no case law, `robots.txt` absent (RFC 9309 →
+unrestricted), and the owner is its intended audience. Building the gate machinery here means
+B26 inherits a working rate limiter, a working conditional-request path and a working
+empty-result alarm, rather than inventing them against a commercial site.
+
+This block also remains the cheapest possible proof that **ADR-003's one-table design extends**.
+If adding a second source type needs more than a new adapter, ADR-003 was wrong and now is when
+to find out — and an HTML adapter tests that harder than a second feed adapter would have.
+
+**Entry condition**: ✅ **satisfied 2026-08-24.** B0 recorded the list URL and confirmed the rows
+are present in a plain `curl` response (`SOURCES-001` §2.2). **This block can start.**
+
+**Configuration: `SOURCES-001` §2.2.** The list and detail URLs, the row anchor, the `source_id`
+attribute, the pagination parameter, the observed volume, and the separate **backfill vs daily
+page caps** are all recorded there with the date verified — together with the nine gate
+conditions. **They are not restated here**, so a site redesign changes exactly one file.
+
+Two of those facts decide how this block is written, so they are named rather than merely linked:
+
+- **`source_id` is `nttNo` from the detail link, never the row's 번호 column**, which shifts as
+  posts are added. Getting this wrong produces duplicate rows on every renumbering.
+- **The search parameters (`searchCnd` / `searchKrwd`) are deliberately unused.** Server-side
+  keyword filtering means anything the keyword misses disappears with no trace — the same
+  silent-omission class as the LMS `monthnow` problem (`NFR-19`). Fetch the list, filter locally.
+
+**Backfill and daily collection are separate settings with separate caps**, because 630 pages
+× 3 s ≈ 32 minutes is a reasonable one-off and an absurd daily job.
 
 **Tasks**
-1. A `Source` abstraction with two implementations: `GmailSource` (refactored from B2) and
-   `RssSource`. Both yield Items; everything downstream is shared.
-2. RSS/Atom parsing; `source_id` = the entry guid; `type = 'NOTICE'`; `category` stays NULL.
-3. `collector_state['rss:<feed>:last_seen']` for incremental behaviour.
-4. Feeds configured in one place, addable without a code change (FR-2).
-5. **If B0 found no feed**, this block instead implements the RSS adapter against any public
-   feed as a proof, and the school's notices come through the paste channel in B6. Record the
-   substitution in `STATUS.md` — do not silently skip the block.
+
+1. **A `Source` abstraction** with two implementations: `GmailSource` (refactored from B2) and
+   `ScrapeSource`. Both yield Items; everything downstream is shared.
+2. **A shared `HttpFetcher` used by every scraping adapter** — this is the reusable part, and it is
+   the reason the block exists:
+   - the honest `User-Agent` from `SOURCES-001` §7, set in **one** place;
+   - a **≥ 3 s** inter-request delay (ADR-022 condition 5), enforced in the fetcher, not left to
+     each adapter to remember;
+   - `If-Modified-Since` / `If-None-Match` from stored validators, and **304 handled as
+     "nothing new", not as an error**;
+   - a configured **page cap**;
+   - **one run per day**.
+3. **Parse the list page** → Item. **`source = 'SCRAPE'`** (DATA-001 — the enum value exists from
+   B2's migration; do **not** reuse `'RSS'`, which means a real feed). `source_id` = the notice's
+   stable id from its permalink, never the row position. `type = 'NOTICE'`; `category` stays
+   `NULL` (REQ-001 §2.3).
+4. **`collector_state['scrape:<source>:last_seen']`** plus the stored HTTP validators, for
+   incremental behaviour (FR-13).
+5. **Sources configured in one place, addable without a code change** (FR-2): base URL, list path,
+   row selector, `source_id` attribute, pagination parameter, **daily page cap and backfill page
+   cap as separate settings**.
+6. **Implement NFR-17 — empty result is failure** (ADR-022 §3, `SOURCES-001` §4.1). This is the
+   part that makes scraping admissible, so it is not optional:
+   - track per source whether it has **ever** returned ≥ 1 item;
+   - zero items from such a source → that source is `FAILED`, the run is `PARTIAL`;
+   - **the cursor does not advance** on a zero-item result;
+   - a parsed row **missing `title` or `url`** is a failed row and is **counted**, not skipped
+     silently;
+   - two consecutive zero-item runs raise the ADR-012 alert.
+7. **A malformed row is skipped and counted**; one bad row never kills the run.
 
 **Acceptance criteria**
-- One collection run pulls from Gmail and RSS, writing one `collection_runs` row covering both.
-- A feed failing while Gmail succeeds records `PARTIAL`, not `FAILED`.
-- Adding a second feed requires editing configuration only.
+
+- One collection run pulls from Gmail and the school board, writing **one** `collection_runs` row
+  covering both.
+- The board failing while Gmail succeeds records `PARTIAL`, not `FAILED`.
+- Adding a second scrape source requires editing configuration only.
+- **A run whose parse yields zero rows records `FAILED` for that source and leaves the cursor
+  unchanged** — verified by pointing the selector at something that matches nothing.
+- The second run issues conditional requests and does no more than the configured page cap of
+  fetches.
+- **Measured**: ≥ 3 s elapses between consecutive requests.
+- The daily run stays within the daily page cap; the backfill is a separate, explicitly invoked
+  path and cannot be triggered by the scheduler.
 
 **Tests (required)**
-- Integration: RSS fixture → Item → database; re-run deduplicated.
-- Unit: a malformed entry is skipped without killing the run.
+
+- Integration: saved HTML fixture → Item → database; re-run deduplicated.
+- Integration: **zero-parsed-rows → `FAILED` for that source, `PARTIAL` run, cursor unchanged.**
+  This is the NFR-17 regression test and the most important test in the block.
+- Integration: a 304 response is "nothing new", not a failure, and does not reset the
+  has-ever-returned-rows flag.
+- Unit: a malformed row is skipped, the run survives, and the skip is **counted**.
+- Unit: a row missing `title` or `url` is counted as a failed row, not silently dropped.
+- Unit: the rate limiter enforces ≥ 3 s (with a fake clock).
+- Unit: the `User-Agent` is the configured honest string, and appears on every request.
+- Unit: `source_id` comes from `nttNo`, not the row's 번호 column — a fixture where the two
+  disagree, so a renumbered board cannot produce duplicate rows.
+- Unit: the scheduled path cannot exceed the daily page cap, whatever the backfill cap is set
+  to.
+- **Never fetch the live site in tests** — saved HTML fixtures only (ADR-010's rule, extended
+  from Gmail to every source).
+
+**Not in this block**: Wevity (B26 — and it needs B0's ToS finding first). Any
+headless browser, ever (ADR-022 §4.2).
 
 ---
 
@@ -153,8 +349,15 @@ out.
 
 **Goal**: items appear under the correct tab.
 
-**Entry condition**: at least **30 collected messages from at least 3 distinct senders.**
+**Entry condition**: at least **30 collected items from at least 3 distinct sources or senders.**
 Rules written against five samples are guesses. If unmet, work the infra track (B9).
+
+> Widened from "30 messages from 3 senders" by ADR-022: collection is no longer mail-only, so the
+> condition counts items from any channel. This also makes the condition reachable by **collecting**
+> rather than only by waiting — B3's scraper can backfill a notice board's existing pages, where a
+> mailbox can only grow forward in time. Note that classification rules still apply to
+> `type = 'NEWSLETTER'` only (REQ-001 §2.3), so the newsletter senders remain the binding
+> constraint for the rules themselves.
 
 **Tasks**
 1. Sender-address rules producing `category`. **Applied only to `type = 'NEWSLETTER'`**;
@@ -171,7 +374,9 @@ Rules written against five samples are guesses. If unmet, work the infra track (
 **Tests (required, test-first)**
 Write the failing test before the rule. Include the documented negative cases (an AI ethics
 essay contest and an AI marketing contest must both be excluded) and one case asserting a
-`type='JOB'` item ends with `category IS NULL`.
+`type='JOB'` item ends with `category IS NULL`. Add one asserting a **`type='NOTICE'` item from
+the scraper** also ends with `category IS NULL` — the classifier must ignore non-newsletter
+sources entirely.
 
 ---
 
