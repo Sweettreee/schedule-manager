@@ -1,6 +1,6 @@
 # WORKFLOW.md — How work is done in this project
 
-**Last revised**: 2026-08-25 (consolidation: B26 added to the lanes, language rule widened, ADR-revision carve-out stated).
+**Last revised**: 2026-08-26 (uv toolchain — ADR-026 — replaces the pip/venv commands).
 
 ## Branching and commits
 
@@ -56,11 +56,14 @@ Claude never commits or pushes without explicit approval. See `CLAUDE.md`.
 
 ## Testing
 
-- `pytest` for the API and collector; unit tests plus testcontainers-backed integration tests.
+- `make test` in `api/` for the API and collector (it runs `pytest` through uv); unit tests plus
+  testcontainers-backed integration tests. **Every Python command goes through `api/Makefile`,
+  never bare `uv run`** — ADR-026 explains why, and the Makefile refuses to run if you forget.
 - TDD is mandatory for filter and classification rules (ADR-010).
 - Fixtures derived from real email must be anonymised per SEC-001 before being committed.
   Raw, un-anonymised mail lives only under `fixtures/raw/`, which is in `.gitignore`.
-- CI runs lint, unit tests and integration tests on every pull request.
+- CI runs lint, unit tests and integration tests on every pull request, and installs with
+  `uv sync --locked` so a stale `uv.lock` fails the build instead of being re-resolved.
 
 ## Database migrations
 
