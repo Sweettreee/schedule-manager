@@ -1,8 +1,7 @@
 # CLAUDE.md — operating rules for Claude Code in this repository
 
 Read this file completely before doing anything. It is the contract for this project.
-**Last revised**: 2026-08-25 (consolidation: policy that lives in another document is now
-pointed to rather than restated; ADR-023 named rungs; ADR-024 scheduled shutdown).
+**Last revised**: 2026-08-26 (ADR-026: uv is the Python toolchain; §4 states the rule).
 
 ## 1. What this project is
 
@@ -68,6 +67,10 @@ than this section. The three points that most often get skipped:
   `ci:`).
 - Timestamps: store `timestamptz` in UTC, convert to KST only at the presentation layer.
 - Python: type hints required, `ruff` + `black`. TypeScript: `eslint` + `prettier`.
+- **Python is operated with `uv`, driven through `api/Makefile`** (ADR-026). `make sync`,
+  `make test`, `make lint`, `make run`. Never propose `python3 -m venv` or `pip install`, and
+  never run bare `uv run` — the environment must be `venv/`, not `.venv/`, or editable imports
+  break silently under this iCloud folder. Add dependencies with `uv add`, and commit `uv.lock`.
 - **Database changes are forward-only migrations** (ADR-015). Never write a `downgrade()`
   that drops or rewrites data; never run manual DDL against any environment.
 - Every non-obvious technical decision gets an ADR in `docs/adr/`, numbered sequentially in
