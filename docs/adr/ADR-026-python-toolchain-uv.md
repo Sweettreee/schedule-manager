@@ -117,8 +117,9 @@ under pip, because the result is written to a readable `uv.lock` in the reposito
 
 - **CI does not exist yet** (`.github/` is absent). When it is created, it must run
   `uv sync --locked` so a stale `uv.lock` fails the build instead of being silently re-resolved.
-  Revisit at the block that introduces CI.
+  Revisit at **B16**, the block that introduces CI/CD (`BLOCKS-001` §7). Until then `WORKFLOW.md`
+  §"Definition of Done" reads "tests pass" as `make lint` and `make test` run locally.
 - **The container image** should install from `uv.lock` and use the same 3.13.11 base, so the
   node runs what CI tested. Revisit at the infra-lane block that builds the image (`ADR-011`).
-- **`quickstart.py` at the repository root** is outside the `api/` project and has no environment
-  of its own. It is B1 scratch work; whether it survives is B1's call, not this ADR's.
+- **`quickstart.py` at the repository root** — **closed 2026-08-30. No such file exists**, tracked
+  or untracked. B1 answered the question by not keeping it, so there is nothing left to decide.

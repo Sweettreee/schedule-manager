@@ -1,0 +1,23 @@
+# Line endings: LF in the repository, LF in every working copy.
+#
+# This machine had `core.autocrlf = true` set globally — a Windows default —
+# so every file was checked out with CRLF. The blobs stayed LF, so nothing was
+# ever corrupted, but a CRLF working copy is a latent failure rather than a
+# harmless one: a shell script copied into a container is read as `#!/bin/sh\r`
+# and fails with "no such file or directory", and the real cause is invisible
+# in that message. B9 is the first block that would hit it.
+#
+# The global setting was corrected on 2026-08-30, but a git configuration lives
+# on one machine and this file lives in the repository — so the guarantee
+# belongs here. See STATUS.md §8.
+
+* text=auto eol=lf
+
+# Binary files: never transform.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.gz binary
+*.zip binary

@@ -1,15 +1,18 @@
 # WORKFLOW.md — How work is done in this project
 
-**Last revised**: 2026-08-26 (uv toolchain — ADR-026 — replaces the pip/venv commands).
+**Last revised**: 2026-08-30 (this file is now the single authority for the Definition of Done;
+tagging removed, Gate 5 added, the CI criterion scoped to B16 onward).
 
 ## Branching and commits
 
 - `main` is always deployable. No direct pushes.
-- One short-lived branch per block: `block/B4-classification-rules`.
-- Pull request into `main`, CI must pass, self-merge is fine.
+- One short-lived branch per block: `block/B1-gmail-oauth`.
+- Pull request into `main`, self-merge is fine. **From B16, CI must pass first**; until then the
+  checks are run by hand before opening the pull request.
 - Conventional Commits, in English:
   `feat:` `fix:` `docs:` `chore:` `refactor:` `test:` `ci:`
-- Tag `main` at the end of each block: `b4-classification-rules`.
+  The prefix describes **what the change is**, not which block it belongs to — a block's
+  documentation update is `docs:` even when the block itself ships a feature.
 
 ## Three tracks
 
@@ -29,19 +32,30 @@ inside the same track.
 
 ## Definition of Done (every block)
 
+**This list is the project's only Definition of Done.** `CLAUDE.md` §6 points here and states
+nothing of its own. Two copies existed until 2026-08-30 and had already drifted apart by one
+criterion, which is exactly the failure the 2026-08-25 consolidation was meant to end.
+
 A block is not finished until all of the following are true:
 
 1. The visible outcome named in `BLOCKS-001` can be demonstrated.
-2. Tests required by ADR-010 exist and pass in CI.
+2. Tests required by ADR-010 exist and pass. **Until B16 builds CI, "pass" means `make lint` and
+   `make test` locally**; from B16 onward it means passing in CI, on the pull request.
 3. Any **GameDay drill** assigned to this block (`docs/GAMEDAY-001-failure-drills.md`) has
    been run, and its write-up exists in `docs/incidents/`.
 4. Code merged into `main` through a pull request.
 5. `STATUS.md` updated — what changed, what is next, what is blocked.
 6. Any new decision recorded as an ADR, numbered sequentially.
-7. `main` tagged.
+7. **Gate 5 delivered** — the file-by-file walkthrough in `CLAUDE.md` §0 — **and the owner has
+   said it landed.** A block whose code the owner cannot read is not finished, however green
+   the tests are.
 
 Step 5 is the one that makes it possible to stop for a month and come back. Skipping it is
 the single most expensive shortcut available in this project.
+
+**Tagging `main` per block was a criterion until 2026-08-30 and is not one now.** The owner
+removed it as maintenance without a matching payoff on a single-person project. Block boundaries
+are recoverable from `STATUS.md` §8 and the pull requests.
 
 ## Working with Claude Code
 
@@ -62,8 +76,11 @@ Claude never commits or pushes without explicit approval. See `CLAUDE.md`.
 - TDD is mandatory for filter and classification rules (ADR-010).
 - Fixtures derived from real email must be anonymised per SEC-001 before being committed.
   Raw, un-anonymised mail lives only under `fixtures/raw/`, which is in `.gitignore`.
-- CI runs lint, unit tests and integration tests on every pull request, and installs with
-  `uv sync --locked` so a stale `uv.lock` fails the build instead of being re-resolved.
+- **CI does not exist yet.** `.github/` is absent and building it is **B16**'s work (ADR-026's
+  open questions say the same). Until then the checks are run by hand — `make lint`, `make test`
+  — before opening a pull request. When B16 builds it, CI must run lint, unit tests and
+  integration tests on every pull request and install with `uv sync --locked`, so a stale
+  `uv.lock` fails the build instead of being silently re-resolved.
 
 ## Database migrations
 
@@ -80,6 +97,10 @@ only drop in a later release.
   *"까먹지 않는다"* is the requirement, not decoration. Do not translate those for consistency.
 - ADRs are numbered in the order decisions are made. Numbers are never reserved in advance
   for decisions not yet taken.
+  **`ADR-025` does not exist and never will.** It was skipped in error on 2026-08-26, not
+  reserved. The gap stays: `ADR-026` is already cited by five documents, and renumbering it to
+  tidy a cosmetic hole would break every one of those citations. **A visible gap is cheaper than
+  an ambiguous reference** — the same reasoning that split `ADR-022` from `ADR-023`.
 - **Blocks follow the same rule** (`BLOCKS-001` §3): numbers are assigned in creation order,
   and execution order is defined by the roadmap tables. A new block is appended, never
   inserted, so renumbering never happens again.

@@ -1,8 +1,9 @@
 # Block Specifications — B0 to B8 (Foundation and the Application)
 
-**Last updated**: 2026-08-25 (**B0's last three non-mail items closed**: no forum RSS, Web
-Services disabled, `User-Agent` fixed. Earlier the same day: B0 made finishable, findings and
-site facts moved to `SOURCES-001` as the single copy, `source='SCRAPE'` adopted)
+**Last updated**: 2026-08-30 (**B0 complete** — dedicated account created, JobKorea subscribed,
+the two-subscription acceptance criterion struck, Wevity's mail and Linkareer's question deferred
+to `STATUS.md` §6; B1's test note now points at ADR-010. Earlier: B0's non-mail items closed, B0
+made finishable, findings moved to `SOURCES-001` as the single copy, `source='SCRAPE'` adopted)
 
 Detailed enough for Claude Code to start from. Infrastructure blocks are in
 `B10-B11-specs.md`; blocks from B12 onward are specified when reached.
@@ -24,7 +25,8 @@ be complete — a recorded rung with a dated finding per source, whatever the fi
 > conflated the two, which made B0 permanently un-completable while still carrying nine
 > acceptance criteria.
 
-Start B0 today; do not wait for anything.
+**B0 closed on 2026-08-30.** The tasks below are kept as the record of what the block did; the
+outcome is at the end of this section.
 
 > **Re-scoped 2026-08-24 by ADR-022.** B0 used to be "subscribe to things, and find out whether a
 > feed exists". Now that scraping is permitted, the question per source is *which rung, on
@@ -37,16 +39,15 @@ Start B0 today; do not wait for anything.
 1. **Create the dedicated collection Gmail account.** Enable 2FA and set recovery options — if
    this account is lost, the entire mail channel is lost.
 
-2. **Subscribe from that address** to Wevity (Web/Mobile/IT, Game/SW, Science/Engineering,
-   Employment/Startup) and JobKorea job alerts. Check whether Linkareer offers email alerts —
-   since it was excluded from scraping, **this is now its only possible channel.**
-   - **Wevity uses both halves of `SCRAPE/MAIL` deliberately** — the scraper for control, the
-     email for redundancy. They are peers, so using both needs no justification (ADR-022 §0).
-   - **JobKorea's subscription is not optional** — it is the only channel for that source
-     (ADR-022 §5 — the email half of `SCRAPE/MAIL`).
-   - **Wevity's is redundancy**, kept deliberately alongside the B26 scraper so a silent scraper
-     break does not become missing information (ADR-022 §6). Duplicates across the two channels
-     are expected and measurable via `content_hash` (DATA-001).
+2. **Subscribe from that address** to JobKorea job alerts. ✅ **Done 2026-08-30.**
+   - **JobKorea's subscription is not optional** — it is the only channel that source has
+     (ADR-022 §5 — the email half of `SCRAPE/MAIL`). Without it the source contributes nothing.
+   - **Wevity's alert and Linkareer's are deferred** — owner's decision, 2026-08-30, recorded
+     with triggers in `STATUS.md` §6. Wevity's was redundancy alongside the B26 scraper
+     (ADR-022 §6), and Wevity is collected by scraping; Linkareer's would be its only possible
+     channel, but nobody has yet checked whether one exists. Neither blocks a downstream block.
+   - Duplicates across Wevity's two channels were to be counted via `content_hash` (DATA-001).
+     With the mail half deferred there is nothing yet to count.
 
 3. **Run the §3 checklist for every source in `SOURCES-001` §2 and fill in the matrix.** This is
    the largest part of B0. Work **top-down the ladder** — official API → tokenised feed → public
@@ -76,9 +77,9 @@ Start B0 today; do not wait for anything.
    | Source | Status entering B0 | What B0 still owes |
    |---|---|---|
    | **School notice board** | `robots.txt` **404**, no RSS/Atom → **`SCRAPE/MAIL`, scraping** | Confirm the list page renders server-side (`curl`). Record the list URL, the row selector shape, and the pagination parameter. **B3 is built against this** |
-   | **Wevity** | ✅ **`SCRAPE/MAIL` — all nine scraping conditions pass; uses *both* channels** | Optional: paste the ToS URL and wording into `SOURCES-001` §2 to complete the evidence record |
-   | **Linkareer** | **`SCRAPE/MAIL`, email only — scraping excluded 2026-08-24 (owner's decision)** | Only: do email alerts exist? If not, the source is dropped (`SOURCES-001` §8). **Do not re-investigate scraping** |
-   | **JobKorea** | **`SCRAPE/MAIL`, email only — decided** | Nothing but the subscription. **Do not re-investigate scraping**; the exclusion is on case law, not on `robots.txt` (`SOURCES-001` §8) |
+   | **Wevity** | ✅ **`SCRAPE/MAIL` — all nine scraping conditions pass** | Optional: paste the ToS URL and wording into `SOURCES-001` §2 to complete the evidence record. **The email half was deferred 2026-08-30** — the scraper (B26) is the planned channel |
+   | **Linkareer** | **`SCRAPE/MAIL`, email only — scraping excluded 2026-08-24 (owner's decision)** | Do email alerts exist? **Deferred unanswered 2026-08-30** to `STATUS.md` §6 — until it is answered the source contributes nothing, and it is parked rather than dropped. **Do not re-investigate scraping** |
+   | **JobKorea** | **`SCRAPE/MAIL`, email only — decided** | Nothing but the subscription — ✅ **done 2026-08-30**. **Do not re-investigate scraping**; the exclusion is on case law, not on `robots.txt` (`SOURCES-001` §8) |
    | **고용24 / Worknet, Saramin** | **`API`** | Submit the key applications — see task 5 |
    | **Academic calendar, KakaoTalk** | **`PASTE`** — permanent, by design | Nothing. Scraping being permitted does not make it preferred |
 
@@ -117,23 +118,28 @@ Start B0 today; do not wait for anything.
    name), the
    LMS answer, and the API key application dates.
 
-**Progress as of 2026-08-25 — B0 is partially complete**
+**B0 is complete — 2026-08-30**
 
 **The findings themselves live in `SOURCES-001` §2, dated, and nowhere else.** They were being
-maintained in five files at once. Read the matrix there; this spec tracks only what B0 still
-owes:
+maintained in five files at once. Read the matrix there; this spec records only the outcome.
 
-| Still owed | Blocks |
-|---|---|
-| **Email subscriptions — activate and report, JobKorea's included.** The dedicated Gmail account, JobKorea's alert (that source's *only* channel), Wevity's alert (redundancy), and whether Linkareer offers alerts at all (its only remaining channel — if none, it is dropped) | B1/B2 |
-| 사람인 API key — approval pending; record the pricing answer on approval | B23's second source |
-
-**This is the whole of what B0 still owes, and it is all mail.** Everything else is resolved:
-school board ✅ `SCRAPE/MAIL` (**B3 unblocked**), LMS calendar ICS ✅ `FEED` (**B24**),
+Resolved: school board ✅ `SCRAPE/MAIL` (**B3 unblocked**), LMS calendar ICS ✅ `FEED` (**B24**),
 **LMS forum RSS ✅ answered 2026-08-25 — not supported**, **LMS Web Services ✅ answered
 2026-08-25 — disabled**, **crawler `User-Agent` ✅ fixed 2026-08-25 (`SOURCES-001` §7)**,
 고용24 key ✅ received (**B23 startable**), Linkareer scraping excluded by owner decision,
-Wevity gate ✅ passed (**B26 unblocked**).
+Wevity gate ✅ passed (**B26 unblocked**), **dedicated collection account ✅ created with 2FA**,
+**JobKorea alert ✅ subscribed 2026-08-30**.
+
+**One acceptance criterion was struck rather than met.** It read *"at least two email
+subscriptions are active and at least one message has arrived; JobKorea's is one of them"*, and
+the owner removed it on 2026-08-30. The reasoning: **JobKorea's is the only subscription any
+source actually depends on** — it is that source's sole channel — while the second, Wevity's,
+was redundancy for a source already collected by scraping. A criterion that demands a second
+subscription for its own sake measures activity, not coverage. Wevity's alert and the unanswered
+Linkareer question moved to `STATUS.md` §6 with triggers.
+
+Still outstanding but owned elsewhere: **사람인 API key**, approval pending — record the pricing
+answer on approval (`STATUS.md` §4, needed by **B23**'s second source, not by B0).
 
 **Two of those answers were negative, and a negative answer is a complete one.** No forum RSS
 means the project has **no RSS source at all**, so B24 is ICS only and no RSS adapter is written
@@ -154,8 +160,6 @@ A **near-miss** was recorded during this investigation:
   cannot start without this.**
 - The LMS question has a written answer, whatever it is, for all three steps.
 - The two API key applications are submitted (approval may still be pending).
-- At least two email subscriptions are active and at least one message has arrived. JobKorea's is
-  one of them.
 - The crawler `User-Agent` string is fixed and recorded.
 - `git log` shows the initial documentation commit.
 
@@ -187,7 +191,12 @@ answer the render check — a `curl` is investigation, a loop is a collector, an
 - Running the command twice on different days works without re-authentication.
 - No token, client secret or client id is present in git.
 
-**Tests**: smoke run only; this block is exploratory by nature (ADR-010).
+**Tests**: **`ADR-010` decides this, not this spec.** This block is exploratory, so no test drives
+the design — but ADR-010's rule is that an exploratory area still gets whatever can be asserted
+without a network. Here that is: the scope cannot widen unnoticed, the token cannot be written
+outside the gitignored directory, and a grant carrying no refresh token is rejected rather than
+stored. The live smoke run is the rest of the evidence, and the acceptance criteria above are
+what measure it.
 
 ---
 
