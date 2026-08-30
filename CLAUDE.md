@@ -1,7 +1,83 @@
 # CLAUDE.md — operating rules for Claude Code in this repository
 
 Read this file completely before doing anything. It is the contract for this project.
-**Last revised**: 2026-08-26 (ADR-026: uv is the Python toolchain; §4 states the rule).
+**Last revised**: 2026-08-27 (§0 added: the five-gate session procedure, at the owner's
+direction — it governs every other rule here. ADR-026: uv is the Python toolchain; §4
+states the rule).
+
+## 0. How a session runs with the owner — the five gates
+
+**This section governs every other rule in this file.** §2 rule 1 ("explain before writing")
+is its one-line form; this is the procedure, and where the two differ this section wins.
+
+The owner is learning cloud engineering (§1, goal 2 — a required condition, not a
+nice-to-have) and does not hold the background knowledge for most blocks in advance. **Code
+the owner cannot read is a failed deliverable even when it is correct**, because it produces
+a system the owner cannot operate, debug, or defend. Speed is not the constraint here;
+comprehension is.
+
+**Never skip a gate. Never combine two gates in one message. Never begin gate N+1 before the
+owner has answered gate N.**
+
+### Gate 1 — Prerequisite knowledge, as a list to go and study
+
+Before describing any work, assume the owner knows **nothing** about the technologies it
+touches.
+
+- Produce a **list of what to learn**, not the teaching itself. A tutorial written inline is
+  unreadable, goes stale, and duplicates primary sources the owner should be reading directly.
+- Each item carries three things: **the term**, **one line on why this block needs it**, and
+  **where to look** — an official docs page, or the exact concept name to search.
+- Split into **"must know before we start"** and **"useful context"**, with a rough time cost
+  for each group.
+- Name what would otherwise be silently assumed: file formats, protocols, CLI tools, and the
+  specific language features the coming code actually uses.
+
+### Gate 2 — Comprehension check, run as an interview
+
+When the owner reports having studied, **do not move to the plan. Check first.**
+
+- Ask in small batches and wait for answers; do not dump every question at once.
+- Ask **"why" and "what breaks if"** questions, not definitions. The goal is to find the gaps
+  that would make the plan unreadable, not to award a score.
+- If an answer is wrong or thin, say so plainly, give the correction, point back at the
+  source, and re-ask. Passing the gate matters more than passing it quickly.
+- **State explicitly when the gate is passed**, and name anything still shaky that the owner
+  should keep an eye on while reading the code.
+
+### Gate 3 — The build plan, reviewed and confirmed
+
+Only now describe the work:
+
+- The **visible outcome** — what will be observably true that is not true now.
+- **Every file created or modified**, each with a one-line statement of its job.
+- The approach, the **alternatives considered**, and the trade-offs, costs and risks (§2
+  rule 1).
+- What is deliberately **out of scope** for this block, and which block owns it instead
+  (§2 rule 6).
+- **What the owner must do by hand** — accounts, consoles, keys, subscriptions.
+
+**Then stop and wait for explicit confirmation. A question from the owner is not a
+confirmation.**
+
+### Gate 4 — Build
+
+Write code only after that confirmation, and only what the plan named. If something
+unforeseen appears mid-build, stop and return to Gate 3 for that piece rather than deciding
+alone.
+
+### Gate 5 — Walkthrough, file by file — the session is not over without it
+
+The owner intends to read every line, so hand over what makes that possible. Per file:
+
+1. **Path and purpose** — one sentence on why this file exists at all.
+2. **Structure** — each function or class: what goes in, what comes out, why it is there.
+3. **The non-obvious lines** — anything not self-evident, above all anything that exists
+   because of an ADR or a spec rule, **with the reference named**.
+4. **How to run it and how to see its result.**
+5. **What the owner does next**, as concrete numbered steps.
+
+**A block is not done (§6) until Gate 5 has been delivered and the owner says it landed.**
 
 ## 1. What this project is
 
@@ -32,6 +108,7 @@ newsletters). File synchronisation spans ingest and is the project's richest clo
 1. **Explain before writing.** Before creating or modifying any file, state: what you will
    do, why this approach, what the alternatives are, and the trade-offs, costs and risks.
    Wait for explicit approval. Then write, then show the diff.
+   **The full procedure is §0 — the five gates. Follow it; this rule is only its summary.**
 2. **Never commit without approval.** Never push to `main` directly.
 3. **Never commit secrets or personal data.** No OAuth tokens, no client secrets, no real
    email content. Test fixtures must be anonymised (see `WORKFLOW.md` and SEC-001).
