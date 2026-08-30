@@ -42,7 +42,7 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
 
 ```
 /
-  api/                  FastAPI service + collector          (from B2)
+  api/                  FastAPI service + collector          (from B1)
   web/                  Next.js UI                           (from B5)
   agent/                file sync client                     (from B18)
   infra/                k8s manifests, Terraform             (from B9; own repo from B16)
@@ -57,7 +57,7 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
     GAMEDAY-001-failure-drills.md
     BLOCKS-001-roadmap.md
     PROMPTS-001-plan-review.md         reusable review prompt + scoring rubric
-    adr/                ADR-000 template, ADR-001 … ADR-024
+    adr/                ADR-000 template, ADR-001 … ADR-026 (025 unused)
     blocks/             B0-B8, B10-B11, B23-B25, B26
     incidents/          incident write-ups (see README there)
   CLAUDE.md
@@ -69,20 +69,26 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
 
 ## Current state
 
-**Pre-implementation — no code exists yet.**
+**B0 complete. B1 in progress.**
 
-**Next action: B3, the scraper adapter for the school notice board.** Its entry condition was
-satisfied on 2026-08-24: the list URL, selectors, pagination and all nine scraping-gate
-conditions are recorded in `SOURCES-001` §2.2. **B0 continues in parallel** — the remaining
-items in it do not block B3. See `STATUS.md`, which is the resume point.
+`api/` holds the collector's first slice — OAuth credential handling, a header-only Gmail reader,
+a CLI and six unit tests — and `make lint`, `make test` pass. **The OAuth flow has never been
+run**, so B1's acceptance criterion (two runs on different days without re-authenticating) is not
+yet met, and the Google-side setup is still ahead.
+
+**Next action: B1.** See `STATUS.md`, which is the resume point and the only place the current
+state is maintained.
 
 The planning set was reviewed twice (2026-08-22, 2026-08-23), rescoped by `ADR-017`, had its
-channel policy rewritten by `ADR-022`/`ADR-023`, and consolidated on 2026-08-25 so that each
-rule has exactly one authoritative home. `STATUS.md` §8 carries the full revision log.
+channel policy rewritten by `ADR-022`/`ADR-023`, consolidated on 2026-08-25 so that each rule has
+exactly one authoritative home, and reconciled with the code on 2026-08-30. `STATUS.md` §8
+carries the full revision log.
 
 ## Stack (decided, see ADRs)
 
-- **API**: Python 3.12 / FastAPI / SQLAlchemy + Alembic (forward-only migrations, ADR-015)
+- **API**: Python 3.13.11 / FastAPI / SQLAlchemy + Alembic (forward-only migrations, ADR-015).
+  Operated with **uv** through `api/Makefile` — `make sync`, `make test`, `make lint`, `make run`.
+  Never bare `uv run`; see `api/README.md` and ADR-026
 - **UI**: Next.js
 - **DB**: PostgreSQL — Docker locally; in-cluster StatefulSet on a PVC backed by a dedicated
   EBS data volume on AWS (ADR-014)

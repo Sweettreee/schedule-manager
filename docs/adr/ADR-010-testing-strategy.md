@@ -40,6 +40,13 @@ specification does not exist until real messages have been read.
    message as an anonymised fixture and write a failing test, then fix the rule. This is the
    only form of TDD that reliably survives in a solo project.
 6. The Gmail API is never called in tests; recorded anonymised fixtures are used.
+7. **"Poor TDD fit" never means "no tests"** *(added 2026-08-30)*. An area this ADR rates poorly
+   still gets every assertion that can be made **without a network** — above all the ones that
+   protect a **safety property**: a scope that must not widen, a secret that must not be written
+   outside its gitignored directory, a credential that must be rejected rather than stored. Those
+   are not design-driving tests, which is why TDD does not fit; they are regression locks on
+   properties whose breach is silent. `CLAUDE.md` §2 rule 4 forbids calling work done without
+   tests, and this item is how that rule and the table above coexist.
 
 ## Rationale
 - The worst failure mode here is not an exception but **silently wrong data** — a duplicate
@@ -63,3 +70,12 @@ specification does not exist until real messages have been read.
 - **Full TDD** — impossible for parsing and inapplicable to infrastructure, which together
   are most of the work.
 - **Adding browser E2E** — low value for a single-user dashboard, high maintenance cost.
+
+## Worked example — B1 *(added 2026-08-30)*
+
+`B1` is the first block to exercise decision item 7, so it is worth naming. The table above rates
+Gmail OAuth a **poor** TDD fit and `B0-B8-specs` §B1 asks only for a smoke run — yet the block
+ships six unit tests. They are not a contradiction: none of them drove a design decision, and
+none of them calls Google. Each locks a property whose breach would be invisible — the
+`gmail.readonly` scope widening, the token landing outside `.secrets/`, or a refresh-token-less
+grant being stored and then dying silently on day eight (the `ADR-007` trap).

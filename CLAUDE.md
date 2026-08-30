@@ -1,7 +1,8 @@
 # CLAUDE.md — operating rules for Claude Code in this repository
 
 Read this file completely before doing anything. It is the contract for this project.
-**Last revised**: 2026-08-27 (§0 added: the five-gate session procedure, at the owner's
+**Last revised**: 2026-08-30 (§6 reduced to a pointer — `WORKFLOW.md` now holds the only
+Definition of Done. Earlier: §0 added, the five-gate session procedure, at the owner's
 direction — it governs every other rule here. ADR-026: uv is the Python toolchain; §4
 states the rule).
 
@@ -183,10 +184,14 @@ than this section. The three points that most often get skipped:
 
 ## 6. What "done" means
 
-A block is done when: code merged to `main` via PR, tests pass in CI, the visible outcome
-described in `BLOCKS-001` is demonstrable, any GameDay drill assigned to the block has been
-run and written up in `docs/incidents/`, `STATUS.md` updated, and any new decision recorded
-as an ADR.
+**The Definition of Done lives in `WORKFLOW.md` §"Definition of Done", and that is the only
+copy.** Read it there. This section deliberately restates none of it: two lists existed until
+2026-08-30 and had already drifted apart by one criterion, and the one that was wrong was this
+one.
+
+Two things in it are easy to miss. **Gate 5 (§0) is a criterion** — a block whose code the owner
+cannot read is not done. And the **CI requirement applies from B16 onward**; before that, `make
+lint` and `make test` locally are what "tests pass" means, because `.github/` does not exist yet.
 
 ## 7. Where to start right now
 

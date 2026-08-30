@@ -43,7 +43,7 @@ personal learning project before implementation begins.
 Read, in this order: STATUS.md, CLAUDE.md, WORKFLOW.md, README.md,
 docs/PRD-000, docs/REQ-001, docs/ARCH-001, docs/DATA-001, docs/BLOCKS-001,
 docs/OPS-001, docs/SEC-001, docs/SOURCES-001, docs/GAMEDAY-001,
-docs/adr/ADR-001 … ADR-024, docs/blocks/*.
+docs/adr/ADR-001 … ADR-026 (there is no ADR-025), docs/blocks/*, and api/.
 STATUS.md section 8 is the revision log; treat findings already
 recorded as applied there as closed, and do not re-raise them.
 </documents>

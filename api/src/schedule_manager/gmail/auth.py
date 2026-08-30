@@ -5,6 +5,12 @@
 # When the access token expires, use the refresh token to reissue a new access token
 # Save/load the refresh token to/from api/.secrets/gmail_token.json
 
+# auth.py 's role
+# Open a browser to display the Google login screen (to receive an authorization code)
+# Exchange that code for an access token + refresh token
+# When the access token expires, use the refresh token to reissue a new access token
+# Save/load the refresh token to/from api/.secrets/gmail_token.json
+
 from __future__ import annotations
 
 import logging
