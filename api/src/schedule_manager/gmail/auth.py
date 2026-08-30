@@ -1,4 +1,9 @@
 """OAuth 2.0 credential handling for the collection mailbox (ADR-007)."""
+# auth.py 's role
+# Open a browser to display the Google login screen (to receive an authorization code)
+# Exchange that code for an access token + refresh token
+# When the access token expires, use the refresh token to reissue a new access token
+# Save/load the refresh token to/from api/.secrets/gmail_token.json
 
 from __future__ import annotations
 
@@ -24,7 +29,6 @@ class MissingRefreshTokenError(RuntimeError):
     problem. So a missing refresh token is an error here, never a warning.
     """
 
-
 def _load_saved(path: Path) -> Credentials | None:
     if not path.exists():
         return None
@@ -45,7 +49,6 @@ def _require_refresh_token(creds: Credentials) -> None:
             "'In production' rather than left in 'Testing', then delete "
             f"{TOKEN_PATH} and authorise again."
         )
-
 
 def _authorise(client_secret_path: Path) -> Credentials:
     if not client_secret_path.exists():
