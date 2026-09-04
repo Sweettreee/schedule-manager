@@ -11,7 +11,10 @@ import sys
 from collections.abc import Sequence
 
 from schedule_manager.config import KST
-from schedule_manager.gmail.auth import MissingRefreshTokenError
+from schedule_manager.gmail.auth import (
+    MissingRefreshTokenError,
+    ReauthorisationRequiredError,
+)
 from schedule_manager.gmail.client import list_recent
 
 logger = logging.getLogger(__name__)
@@ -55,6 +58,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "list":
             return _cmd_list(args.limit)
+    except ReauthorisationRequiredError as exc:
+        # A separate exit code from the one below, because the response is different: this
+        # needs a human at a browser, not a change in the Google Cloud Console. B13's
+        # alerting will want to tell the two apart (ADR-012).
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
     except MissingRefreshTokenError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

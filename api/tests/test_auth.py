@@ -13,8 +13,9 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from google.auth.exceptions import RefreshError
 
-from schedule_manager import config
+from schedule_manager import cli, config
 from schedule_manager.gmail import auth
 
 
@@ -70,3 +71,65 @@ def test_expired_credentials_are_refreshed_and_rewritten(monkeypatch, tmp_path) 
     assert auth.get_credentials(token_path=token_path) is expired
     assert refreshed == ["refreshed"]
     assert token_path.exists()
+
+
+def _refresh_raising(exc: Exception):
+    """A credential whose refresh fails the way google-auth fails."""
+
+    def _refresh(request: object) -> None:
+        raise exc
+
+    return _refresh
+
+
+def test_a_dead_grant_is_reported_as_needing_reauthorisation(monkeypatch, tmp_path) -> None:
+    """ADR-027: `invalid_grant` means the stored token is finished and a human is needed."""
+    token_path = tmp_path / "gmail_token.json"
+    dead = SimpleNamespace(
+        valid=False,
+        refresh_token="a-refresh-token",
+        refresh=_refresh_raising(
+            RefreshError("('invalid_grant: Token has been expired or revoked.', {...})")
+        ),
+    )
+    monkeypatch.setattr(auth, "_load_saved", lambda path: dead)
+    monkeypatch.setattr(auth, "Request", lambda: None)
+
+    with pytest.raises(auth.ReauthorisationRequiredError):
+        auth.get_credentials(token_path=token_path)
+
+    assert not token_path.exists(), "a failed refresh must not overwrite the stored token"
+
+
+def test_a_transient_refresh_failure_is_not_reported_as_reauthorisation(
+    monkeypatch, tmp_path
+) -> None:
+    """The other half of ADR-027, and the more expensive one to get wrong.
+
+    Telling the owner to re-authorise after a network blip would have them delete a healthy
+    token, and needless re-authorisation evicts one of Google's 100 refresh tokens per
+    client. So anything that is not `invalid_grant` propagates untouched.
+    """
+    token_path = tmp_path / "gmail_token.json"
+    flaky = SimpleNamespace(
+        valid=False,
+        refresh_token="a-refresh-token",
+        refresh=_refresh_raising(RefreshError("Connection aborted: read timeout")),
+    )
+    monkeypatch.setattr(auth, "_load_saved", lambda path: flaky)
+    monkeypatch.setattr(auth, "Request", lambda: None)
+
+    with pytest.raises(RefreshError):
+        auth.get_credentials(token_path=token_path)
+
+
+def test_cli_reports_reauthorisation_with_its_own_exit_code(monkeypatch, capsys) -> None:
+    """A dead grant must exit distinguishably, not as an unhandled traceback."""
+
+    def _raise(limit: int) -> None:
+        raise auth.ReauthorisationRequiredError("re-authorise, see RUNBOOK-001")
+
+    monkeypatch.setattr(cli, "list_recent", _raise)
+
+    assert cli.main(["list"]) == 3
+    assert "re-authorise" in capsys.readouterr().err

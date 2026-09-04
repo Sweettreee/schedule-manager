@@ -1,12 +1,12 @@
 # STATUS — Project Status
 
-**Last updated**: 2026-08-30
-**Current stage**: **B0 complete. B1 in progress — its code exists, its OAuth flow has never run.**
-B0 closed on 2026-08-30, when the dedicated collection account and the JobKorea alert went live.
-B1's implementation landed before that, without passing through the `CLAUDE.md` §0 gates — an
-exception, recorded in §8 — so **B1 restarts at Gate 1**, and where a gate disagrees with the
-existing code the gate wins.
-**Next action: B1 — Gate 1, then Google's OAuth publishing rules and the ADR-007 two-day clock.**
+**Last updated**: 2026-09-03
+**Current stage**: **B0 and B1 complete. The collector reads the collection mailbox unattended.**
+The OAuth flow ran for the first time on 2026-09-02 at 18:04 KST, and on 2026-09-03 at 20:51 KST
+`make run` renewed the access token from the stored refresh token and printed the mailbox
+**without opening a browser** — acceptance criterion 1, which needed a calendar day to pass.
+B1 went through all five `CLAUDE.md` §0 gates; **Gate 5 was delivered and confirmed 2026-09-03**.
+**Next action: B2 — Message to Item, storage, deduplication, incremental collection.**
 
 > **Claude Code, start here.** Read `CLAUDE.md` in full, then this file, then
 > `docs/BLOCKS-001-roadmap.md`, then the spec for the current block in `docs/blocks/`.
@@ -14,18 +14,31 @@ existing code the gate wins.
 
 ## 1. Next action
 
-**B1 — Gmail OAuth and reading mail locally.** Spec: `docs/blocks/B0-B8-specs.md` §B1.
-**Before anything else, reconfirm Google's OAuth publishing rules and start the ADR-007 two-day
-clock** (§4 item 10). The app lane runs B1 → B2 → B3.
+**B2 — Message to Item, storage, deduplication, incremental collection.** Spec:
+`docs/blocks/B0-B8-specs.md` §B2. The app lane runs B1 → **B2** → B3.
 
-**B1's code exists, and B1 is not done.** `api/` holds the CLI, the OAuth credential handling and
-six unit tests, all on `main`. What has never happened is the Google side: no Cloud project, no
-consent screen, no `api/.secrets/`. The OAuth flow has not run once, so B1's first acceptance
-criterion — running on two different days without re-authenticating — cannot yet be evaluated.
+B2 is the first block with a database in it: `docker-compose.yml` (PostgreSQL 16 + MinIO), the
+full `DATA-001` schema as one forward-only migration, the Gmail-message-to-`Item` converter, the
+incremental cursor (FR-13), and a `collection_runs` row for every run. Unlike B1 it is **not**
+exploratory — `ADR-010` makes TDD mandatory where the specification already exists, which here is
+most of it. Start at `CLAUDE.md` §0 Gate 1.
 
-**That code was written without the `CLAUDE.md` §0 gates. That is an exception, not a precedent.**
-B1 restarts at **Gate 1**, and where a gate reaches a different conclusion from the existing code,
-**the gate wins and the code changes** (owner's decision, 2026-08-30).
+**One dated item is carried over from B1, and it is evidence rather than work:**
+
+- **Re-run `make run` on or after 2026-09-10 (D+8).** `ADR-027` claims that publishing the app
+  to "In production" removed the seven-day refresh-token expiry. The token JSON carries no
+  expiry information, so **a successful run after day seven is the only available evidence.**
+  Grant issued 2026-09-02 18:04 KST. If a browser opens instead, `ADR-027`'s central finding is
+  wrong and `ADR-007`'s IMAP fallback returns to scope — stop B2 and settle it first.
+
+**Both B1 acceptance criteria are met, and both were verified rather than assumed.**
+
+1. *Two different days without re-authentication* — the 2026-09-03 run logged `stored access
+   token is stale; refreshing`, exited 0, printed ten messages, and ran no consent flow. The
+   token was rewritten `0600` and still carries a refresh token.
+2. *No secret in git* — `git ls-files` tracks none, the full history of `api/.secrets/` is empty,
+   the client id appears in no diff (`git log --all -S`), and `git check-ignore` confirms both
+   secret files are ignored at `.gitignore:4`.
 
 **B3 is unblocked on evidence but not yet startable** — it needs B2's pipeline and schema to
 have a table to write into. B26 follows B3. When the app lane waits on data volume, work the
@@ -154,8 +167,11 @@ document disagree, **the document wins** — this one is hand-maintained and wil
 
 9. **Seoul region pricing** — confirm in the Pricing Calculator during **B10**.
 
-10. **Google OAuth publishing rules** — reconfirm at the start of **B1**; start the 2-day clock.
-    **This is the immediate next action.**
+10. ~~**Google OAuth publishing rules**~~ — **✅ answered 2026-09-02, recorded in ADR-027.**
+    Publishing to "In production" needs **no verification**; `Published + External + Unverified`
+    is a usable state, costing a one-time warning screen and a 100-user cap. The seven-day
+    expiry applies only to **Testing** status. **The ADR-007 two-day fallback was never
+    triggered** and its clause is retained, marked not triggered.
 
 ### Not blocking, but owed for completeness
 
@@ -198,6 +214,8 @@ hierarchy; this is the index to one of them.
 | LMS-authenticated download | L1 in daily use, and the LMS turns out to permit it | ADR-020, BLOCKS-001 §9 |
 | Class timetable recurrence (`rrule`) | A semester proves annoying to maintain as individual rows | ADR-019, BLOCKS-001 §9 |
 | Semantic / embedding search | B22 shows lexical search is the bottleneck, not the index | BLOCKS-001 §9 |
+| **Separate OAuth clients for development and production** | Re-authorisation becomes frequent, or the 100-refresh-token-per-client limit is approached | **ADR-027** open question 2 |
+| **Handling Gmail API `HttpError` in the collector** | **B2**, where `collection_runs` gives `PARTIAL`/`FAILED` somewhere to record it. Deliberately not built in B1: the 403 seen on 2026-09-02 was `accessNotConfigured`, a one-time setup fault | §8, `CLAUDE.md` §2 rule 6 |
 | Cross-source deduplication via `content_hash` | **B26 + one month**, with counts. **Narrowed 2026-08-30**: Wevity's email half is deferred, so the designed mail-and-scraper overlap does not exist yet | ADR-003, ADR-022 |
 | **Wevity's email alert — the redundant half of `SCRAPE/MAIL`** | **Deferred 2026-08-30.** Wevity is collected by scraping (B26); the mail was only ever redundancy. Revisit if B26's scraper breaks silently, or at the deduplication review above | ADR-022 §6, SOURCES-001 §2 |
 | Korean full-text search approach (`pg_trgm` / `pg_bigm` / external) | B22, against real queries | ADR-003, DATA-001 |
@@ -237,7 +255,7 @@ Quoted verbatim from `REVIEW-001` Part 6 — *"내가 판단할 수 없어 남�
 
 ## 7. Document index
 
-60 tracked files — 47 documents and 13 source and configuration files. **No document restates the
+65 tracked files — 49 Markdown documents, 3 legal pages, and 13 source and configuration files. **No document restates the
 channel ladder, either gate, or the B0 findings** — those live in `SOURCES-001` and everything
 else links.
 
@@ -257,9 +275,11 @@ else links.
 | docs/OPS-001-cost-guardrails.md | Approved |
 | **docs/SOURCES-001-channel-policy.md** | **Approved — the authority for the ladder (§1), the scraping gate (§4), the `AGENT` gate (§5) and the source register (§2)** |
 | docs/GAMEDAY-001-failure-drills.md | Approved, 8 drills |
+| **docs/RUNBOOK-001-gmail-reauthorisation.md** | **New 2026-09-02** — recovery when the Gmail grant dies; the target of exit code 3 |
+| legal/index.html, legal/privacy.html, legal/terms.html | **Temporary.** Published at `sweettreee.github.io/schedule-manager/legal/` to satisfy the OAuth consent screen. Replaced when the domain is chosen (§4 item 2, B12) |
 | docs/BLOCKS-001-roadmap.md | Approved — **B24 reduced to ICS only** |
 | docs/PROMPTS-001-plan-review.md | Reusable review prompt **+ the REVIEW-001 scoring rubric** |
-| docs/blocks/B0-B8-specs.md | Approved — **B0 complete 2026-08-30**; B1 in progress |
+| docs/blocks/B0-B8-specs.md | Approved — **B0 complete 2026-08-30, B1 complete 2026-09-03**; B2 next |
 | docs/blocks/B10-B11-specs.md | Approved — decisions marked **[DECIDED]**, defaults marked *[EXAMPLE]* |
 | docs/blocks/B23-B25-specs.md | Approved — **B24's forum-RSS half removed** |
 | docs/blocks/B26-spec.md | Approved — Wevity only |
@@ -275,6 +295,7 @@ else links.
 | **docs/adr/ADR-024-scheduled-shutdown.md** | **Accepted** — 02:00–08:00 KST stop, Elastic IP, NFR-1 satisfied |
 | *(ADR-025)* | **Number never used.** Skipped in error, not reserved — see `WORKFLOW.md` §Documentation rules |
 | **docs/adr/ADR-026-python-toolchain-uv.md** | **Accepted** — uv, `uv.lock` committed, interpreter pinned, environment is `venv/` |
+| **docs/adr/ADR-027-oauth-publishing-and-token-death.md** | **Accepted** — amends ADR-007: publishing needs no verification, IMAP fallback not triggered, `invalid_grant` made actionable |
 
 **Code and configuration (from B1)**
 
@@ -282,12 +303,13 @@ else links.
 |---|---|
 | api/README.md | How to install and run the collector; the `venv/`-not-`.venv/` trap |
 | api/Makefile | The only entry point for Python commands (ADR-026) |
+| **api/.python-version** | **Restored 2026-09-03** — the `3.13.11` interpreter pin `ADR-026` requires. It had been deleted and its restoration lost in a merge; the documents claimed it existed for four days while it did not |
 | api/pyproject.toml, api/uv.lock | Dependencies and the committed lock |
 | api/src/schedule_manager/config.py | Paths and the `gmail.readonly` scope constant |
 | api/src/schedule_manager/gmail/auth.py | OAuth credentials, refresh, token persistence (ADR-007) |
 | api/src/schedule_manager/gmail/client.py | Header-only message listing |
 | api/src/schedule_manager/cli.py | `schedule-manager list` — B1's visible result |
-| api/tests/test_auth.py | Six unit tests; no test touches the Gmail API (ADR-010) |
+| api/tests/test_auth.py | **Nine** unit tests; no test touches the Gmail API (ADR-010) |
 
 **Deleted 2026-08-25**: `docs/REVIEW-001-plan-assessment.md`, `docs/REVIEW-002-prompt-driven-review.md`.
 Both self-declared all findings applied. The rubric moved to `PROMPTS-001`; the five open
@@ -298,6 +320,8 @@ for why a review is an event rather than an artefact.
 
 | Date | Change |
 |---|---|
+| **2026-09-03** | **B1 complete.** The two criteria that needed a calendar day rather than more code were settled. **Acceptance criterion 1 verified**: `make run` at 20:51 KST logged `stored access token is stale; refreshing`, renewed the access token from the stored refresh token, printed ten messages and **opened no browser** — the unattended path `ADR-007` was chosen for. The token was rewritten `0600`, still carrying a refresh token. **Acceptance criterion 2 re-verified rather than assumed**: no secret is tracked, `api/.secrets/` has no history at all, the client id appears in no diff, and `git check-ignore` names `.gitignore:4` for both secret files. **Gate 5 delivered and confirmed by the owner**, which is `WORKFLOW.md` criterion 7 and the last thing standing between B1 and done. `make lint` and `make test` green — **nine** tests, not the six the 2026-08-30 row records; `ADR-027`'s two `RefreshError` branches and the CLI's exit code 3 added three. **No GameDay drill applies** — `GAMEDAY-001` attaches drills to B12–B19, so criterion 3 is vacuous here. **Carried into B2 as evidence, not work**: the **D+8 run on 2026-09-10** is still the only way to test `ADR-027`'s claim that publishing removed the seven-day expiry, because the token JSON records no expiry. **Two repository defects were found and fixed in passing**: `cartoon-hippo.jpg`, an unrelated 225 KB image committed to the repository root, was removed before it could reach `main`; and **`api/.python-version` was missing** — `ADR-026` §47 and the 2026-08-30 row below both state the `3.13.11` pin exists, and it existed in neither `HEAD` nor `main`. It was added in `710a390`, deleted in `2ed2e81` and `d1c8703`, and its restoration was lost in the `fddd10e` merge. No symptom, because `requires-python = ">=3.11"` happened to resolve to 3.13.11 on this machine — which is precisely the silent divergence the pin exists to prevent. **Next block: B2** |
+| **2026-09-02** | **B1 built and run for the first time.** The OAuth flow ran at 18:04 KST, `api/.secrets/gmail_token.json` was written `0600` carrying a refresh token, and `make run` printed ten messages from the collection mailbox. **`ADR-027` amends `ADR-007`**: publishing to "In production" requires **no verification** — `Published + External + Unverified` is a usable state — so the seven-day refresh-token expiry, which applies only to **Testing** status, does not apply. **The ADR-007 two-day IMAP fallback was never triggered**, and its clause is kept, marked not triggered, because the rule that decided the block is worth more than the lines it costs. **`ReauthorisationRequiredError` and exit code 3 were added** for a grant that dies *after* issuance — password change, revocation, six months idle, or eviction by Google's 100-refresh-token-per-client limit — which `ADR-007` never covered and which previously surfaced as an unhandled traceback. **Only `invalid_grant` is converted; every other `RefreshError` propagates**, because reporting a network blip as a dead grant would have the owner delete a healthy token and burn one of those 100 slots. That discriminator is a **substring match** and is recorded as a fragility in `ADR-027` open question 1. **`RUNBOOK-001` written** as the target of exit code 3. Three defects in the pre-gate B1 code were fixed: a duplicated comment block, a `client_secret.json` filename mismatch, and an error message claiming a refresh-token-less grant "dies in seven days" when it dies in about **one hour** — the seven days belong to a different failure. `client_secret.json` tightened from `644` to `600`. **Two things were learned by running it**: the consent screen's **scope list was empty and the flow worked anyway** (the client requests the scope at runtime), answering `ADR-027` open question 3; and the first call failed 403 `accessNotConfigured` because **the Gmail API had never been enabled on the Cloud project** — B1 task 1's second half. Handling that class of `HttpError` was **deliberately left to B2**, which has `collection_runs` to record it (§6). **Not yet done**: acceptance criterion 1 needs a run on a later calendar day, `ADR-027`'s seven-day claim needs a **D+8 run on 2026-09-10**, and **Gate 5 has not been delivered** |
 | **2026-08-30** | **B0 closed, B1 opened, and the document set reconciled with the repository.** No decision was reversed; several were *made*, because the reconciliation surfaced contradictions. **B0 is complete**: the dedicated collection account exists with 2FA, JobKorea's alert is subscribed, and the owner **struck B0's two-subscription acceptance criterion** on the grounds that JobKorea's is the only subscription a source depends on. **Wevity's email alert and Linkareer's whole question were deferred** to §6 with triggers — Wevity is collected by scraping (B26) and its mail was only redundancy; Linkareer has no scraper to be redundant with. **The documents had gone stale against the code**: `STATUS.md` and `README.md` both still said "no code exists yet" while `api/` held all of B1's implementation and the uv toolchain, `README.md` still named B3 as the next action and Python 3.12, and §7's index claimed 45 files and stopped at ADR-024. **`STATUS.md` §1.2 was deleted** — it contradicted §1.1 on Wevity's terms of service and still told the reader to start B0 today. **Definition of Done consolidated into `WORKFLOW.md` as the single authority**: `CLAUDE.md` §6 became a pointer, Gate 5 was added as a criterion, the `main`-tagging requirement was **removed**, and the CI requirement was **scoped to B16 onward** because `.github/` does not exist and creating it now would be B16's work done early. **`ADR-025` recorded as a permanent gap** — skipped in error, not reserved; ADR-026 keeps its number because five documents already cite it. **`ADR-010` gained the rule** that TDD-unsuitable areas still get network-free unit tests, which is why B1 has six tests against a spec that asks only for a smoke run. **`make lint` was failing on `main`** — black wanted three blank lines in `auth.py`; fixed. Recorded and not fixed: **B1's implementation is inside the `chore(api): adopt uv…` commit**, so the block boundary is invisible in `git log`, and rewriting merged history would cost more than the confusion does. **Two repository defects were found and fixed in passing**: `api/.python-version` had been deleted by accident, which quietly removed the interpreter pin `ADR-026` exists to guarantee — restored to `3.13.11`; and `core.autocrlf = true` was set globally on this macOS machine, checking every file out with CRLF. **Nothing was corrupted — the blobs were always LF** — but a CRLF working copy fails silently later, when a shell script copied into a container is read as `#!/bin/sh\r` (**B9** is the first block exposed). The global setting was changed to `input`, and **`.gitattributes` was added** so the guarantee belongs to the repository rather than to one machine's configuration |
 | **2026-08-26** | **uv adopted as the Python toolchain (`ADR-026`).** `pip` and `python3 -m venv` are gone; every Python command goes through `api/Makefile`, which exports `UV_PROJECT_ENVIRONMENT=venv` and refuses to run while a `.venv` exists. The cause is this repository's location: under the iCloud-synced `Desktop` folder macOS reapplies `UF_HIDDEN` to dot-prefixed directories, and CPython's `site` module skips hidden `.pth` files — exactly where an editable install records the path to `src/`. The symptom is a `ModuleNotFoundError` that `pytest` cannot reproduce, because pytest sets its own path. `uv.lock` is committed, which gives the project the reproducible install it never had. **This row was written on 2026-08-30**; the block that made the change did not update this log |
 | **2026-08-25 (pm)** | **B0's last three non-mail items answered, and two of the answers were negative.** **(1) The LMS does not support forum RSS.** It was the project's last RSS candidate, so **no RSS or Atom source exists anywhere in this project** — a closed finding, not a gap (`SOURCES-001` §1.1). Consequences: **B24 drops from "LMS calendar ICS + forum RSS" to ICS only**, **no RSS adapter is written anywhere** (B23-B25-specs §B24 items 4 and 7 deleted), and **LMS course notices fall to `PASTE` (B6)** — the next rung down is `SCRAPE/MAIL`, but the course boards are behind a login and scraping behind a login is permanently prohibited. **`source = 'RSS'` is kept in the DATA-001 enum, deliberately and unused**: migrations are forward-only (ADR-015), an unused enum value costs nothing, and adding one later costs a migration. **(2) Moodle Web Services is disabled for students**, so it does not supersede the `AGENT` rung as ADR-021 §186 hoped — the conditional §5 gate (B25) is the only remaining path to course materials. **(3) The crawler `User-Agent` is fixed**: `schedule-manager/0.1 (personal use; +kimnoell1225@gmail.com)`, recorded in `SOURCES-001` §7 as the single value, set in one place by B3's `HttpFetcher` — **B3's condition-4 blocker cleared**. **No ADR was written**: these are B0's product — evidence — and the roadmap change follows from the evidence rather than from a decision. **B0 now owes only its email subscriptions** (§4 items 3–4), which ride along with B1. **Next action moves from B3 to B1** — B3 was unblocked on evidence, but the app lane is B1 → B2 → B3 and no code exists |
