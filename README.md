@@ -22,9 +22,6 @@ over a single `items` table (`ADR-003`):
 | **Job postings and newsletters** | ingest | **Official APIs** + Gmail + scraped public pages + paste/screenshot |
 | **File synchronisation** | ingest **and** the project's richest cloud curriculum | L0 web locker + L1 one-way laptop agent |
 
-Deferred with named triggers, not vaguely: file sync L2/L3, Korean morphological search,
-embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001` §9.
-
 ## Read these first
 
 | If you want to know | Read |
@@ -42,10 +39,11 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
 
 ```
 /
-  api/                  FastAPI service + collector          (from B1)
-  web/                  Next.js UI                           (from B5)
-  agent/                file sync client                     (from B18)
-  infra/                k8s manifests, Terraform             (from B9; own repo from B16)
+  api/                  FastAPI service + collector
+  web/                  Next.js UI
+  agent/                file sync client
+  infra/                k8s manifests, Terraform
+  legal/                privacy policy and terms, for the OAuth consent screen
   docs/
     PRD-000-problem-definition.md
     REQ-001-requirements.md
@@ -56,33 +54,18 @@ embedding search, recurring events, LMS-authenticated download. See `BLOCKS-001`
     SOURCES-001-channel-policy.md      the source register — and the authority on channels
     GAMEDAY-001-failure-drills.md
     BLOCKS-001-roadmap.md
+    RUNBOOK-001-gmail-reauthorisation.md
     PROMPTS-001-plan-review.md         reusable review prompt + scoring rubric
-    adr/                ADR-000 template, ADR-001 … ADR-026 (025 unused)
+    adr/                ADR-000 template, ADR-001 … ADR-027 (025 unused)
     blocks/             B0-B8, B10-B11, B23-B25, B26
     incidents/          incident write-ups (see README there)
   CLAUDE.md
   WORKFLOW.md
   README.md
   STATUS.md
+  .gitattributes
   .gitignore
 ```
-
-## Current state
-
-**B0 complete. B1 in progress.**
-
-`api/` holds the collector's first slice — OAuth credential handling, a header-only Gmail reader,
-a CLI and six unit tests — and `make lint`, `make test` pass. **The OAuth flow has never been
-run**, so B1's acceptance criterion (two runs on different days without re-authenticating) is not
-yet met, and the Google-side setup is still ahead.
-
-**Next action: B1.** See `STATUS.md`, which is the resume point and the only place the current
-state is maintained.
-
-The planning set was reviewed twice (2026-08-22, 2026-08-23), rescoped by `ADR-017`, had its
-channel policy rewritten by `ADR-022`/`ADR-023`, consolidated on 2026-08-25 so that each rule has
-exactly one authoritative home, and reconciled with the code on 2026-08-30. `STATUS.md` §8
-carries the full revision log.
 
 ## Stack (decided, see ADRs)
 
@@ -107,7 +90,8 @@ carries the full revision log.
 - **Observability**: VictoriaMetrics single-node + node-exporter; Grafana on demand (ADR-013)
 - **Liveness**: external dead man's switch + in-app staleness banner (ADR-012)
 - **IaC**: console first, then Terraform via `import` (ADR-016)
-- **Delivery**: GitHub Actions → Flux (GitOps, separate infra repo from B16)
+- **Delivery**: GitHub Actions → Flux (GitOps; the infra manifests live in their own
+  repository — ADR-008)
 - **Schedule**: the instance is stopped **02:00–08:00 KST** by design; the collector runs at
   08:05 (ADR-024)
 - **Budget ceiling**: 30,000 KRW / month at an assumed 1 USD = 1,400 KRW (ARCH-001).
